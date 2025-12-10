@@ -1,0 +1,16 @@
+{
+  "Name": "UnlimitedEventExpansion",
+  "Author": "d5a1lamdtd",
+  "Version": "1.0.0",
+  "Description": "UnlimitedEventExpansion",
+  "UniqueID": "d5a1lamdtd.UnlimitedEventExpansion",
+  "EntryDll": "UnlimitedEventExpansion.dll",
+  "MinimumApiVersion": "4.0.0",
+  "UpdateKeys": [ "Nexus:00000" ], // 19309 27343
+  "Dependencies":[
+    {  
+      "UniqueID": "Pathoschild.ContentPatcher",
+      "IsRequired": true
+    }
+  ]
+}
