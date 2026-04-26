@@ -8,6 +8,7 @@ using StardewValley.Objects;
 using StardewValley;
 using Newtonsoft.Json.Linq;
 using StardewValley.Extensions;
+using System.Text.RegularExpressions;
 
 namespace UnlimitedEventExpansion
 {
@@ -15,16 +16,10 @@ namespace UnlimitedEventExpansion
     {
 
 
-        public static void TriggerDinnerEvent(string npcTarget)
+        public static void TriggerDineOutEvent(string npcTarget)
         {
             if (Game1.eventUp || Game1.getCharacterFromName(npcTarget) == null || !CanTriggerEvent())
                 return;
-
-            if (Game1.timeOfDay < 1800)
-            {
-                Game1.activeClickableMenu = new DialogueBox("It is too early for dinner. Come back after 6:00 PM");
-                return;
-            }
 
             Task.Run(async () =>
             {
@@ -47,19 +42,19 @@ namespace UnlimitedEventExpansion
                 }
 
 
-                await GenerateDinnerEvent(npcTarget, location.DisplayName, items[0].Name, items[1].Name);
-                var conversationJson = eventString;
+                var aiRawString = await GenerateDineOutEvent(npcTarget, location.DisplayName, items[0].Name, items[1].Name);
+                var conversationJson = ConvertToJToken(aiRawString);
 
-                var conversation = conversationJson.ToObject<Conversation>();
+                var conversation = conversationJson.ToObject<SingleConversation>();
                 if (conversation != null)
                 {
                     var sb = new StringBuilder();
-                    
-                    if (npcTarget != "Emily" && npcTarget != "Gus" && Game1.random.NextBool())
+
+                    if (npcTarget != "Emily" && npcTarget != "Gus" && Game1.random.NextDouble() < 0.25)
                     {
                         sb.Append($"gusviolin/7 8/farmer 5 6 1 {npcTarget} 10 5 2 Gus 11 6 2 Emily 4 11 1");
                         sb.Append($"/friendship {npcTarget} 10");
-                        sb.Append($"/skippable/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.PlayerWarpper {event_map} 5 6 {npcTarget}\r\n");
+                        sb.Append($"/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.PlayerWarpper {event_map} 5 6 {npcTarget}\r\n");
                         sb.Append($"/animate Gus false true 723 16 17/pause 23000/stopAnimation Gus/pause 1000/faceDirection Gus 3/speak {npcTarget} \"Thanks, Gus. Your music is amazing.\"/faceDirection {npcTarget} 3/move Gus 0 2 2/doAction 11 9/move Gus 0 3 1/move Gus 12 0 3 true/pause 3000");
                         sb.Append($"/playSound woodyStep/move Emily 1 0 0/move Emily 0 -4 0/move Emily -4 0 0/move Emily 0 -1 0/speak Emily \"I've got a {items[0].DisplayName} for {Game1.player.Name} and a {items[1].DisplayName} for {npcTarget}\"{foodTile}/playSound woodyHit/speak {npcTarget} \"Thank you Emily.\"" +
                             $"/move Emily 4 0 2/move Emily 0 5 1 {npcTarget} 0 1 2/move {npcTarget} -1 0 3/move Emily 11 0 1 true/playMusic musicboxsong");
@@ -68,22 +63,37 @@ namespace UnlimitedEventExpansion
                     {
                         sb.Append($"{conversation.Music}/7 8/farmer 5 6 1 {npcTarget} 9 6 3");
                         sb.Append($"{foodTile} /friendship {npcTarget} 10");
-                        sb.Append($"/skippable/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.PlayerWarpper {event_map} 5 6 {npcTarget}\r\n");
+                        sb.Append($"/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.PlayerWarpper {event_map} 5 6 {npcTarget}\r\n");
                     }
 
                     int lineNum = 1;
                     foreach (var entry in conversation.Dialogue)
                     {
                         string portraitId = entry.Portrait;
-                        if (portraitId != null && !portraitId.StartsWith("$"))
-                            portraitId = "$" + portraitId;
+
+                        if (!string.IsNullOrEmpty(portraitId))
+                        {
+                            Match match = Regex.Match(portraitId, @"\$\d+");
+
+                            if (match.Success)
+                            {
+                                portraitId = match.Value;
+                            }
+                            else
+                            {
+                                if (!portraitId.StartsWith("$"))
+                                {
+                                    portraitId = "$" + portraitId.Trim();
+                                }
+                            }
+                        }
 
 
                         if (lineNum == 1)
                         {
                             if (entry.Type == "D")
                             {
-                                sb.Append($"/pause 300/beginSimultaneousCommand/speak {npcTarget} \"{entry.Dialogue}\"{portraitId}/endSimultaneousCommand");
+                                sb.Append($"/pause 2000/beginSimultaneousCommand/speak {npcTarget} \"{entry.Dialogue}\"{portraitId}/endSimultaneousCommand");
                                 lineNum++;
                             }
                             continue;
@@ -100,7 +110,27 @@ namespace UnlimitedEventExpansion
                             for (int i = 0; i < entry.Player.Count; i++)
                             {
                                 var option = entry.Player[i];
-                                sb.Append($"_{option.Response}_{option.Reaction}{option.Portrait}");
+
+                                string repPortraitId = option.Portrait;
+
+                                if (!string.IsNullOrEmpty(repPortraitId))
+                                {
+                                    Match match = Regex.Match(repPortraitId, @"\$\d+");
+
+                                    if (match.Success)
+                                    {
+                                        repPortraitId = match.Value;
+                                    }
+                                    else
+                                    {
+                                        if (!repPortraitId.StartsWith("$"))
+                                        {
+                                            repPortraitId = "$" + repPortraitId.Trim();
+                                        }
+                                    }
+                                }
+
+                                sb.Append($"_{option.Response}_{option.Reaction}{repPortraitId}");
                                 //if (i < entry.Player.Count - 1)
                                 //    sb.Append("_");
                             }
@@ -113,26 +143,11 @@ namespace UnlimitedEventExpansion
 
                     // Final event string
                     string rawEvent = sb.ToString();
-                    Console.WriteLine(rawEvent);
+                    //Console.WriteLine(rawEvent);
 
 
 
-                    if (!Game1.eventUp)
-                    {
-                        Event ev = new Event(rawEvent.Trim(), Game1.player);
-                        Game1.activeClickableMenu = null;
-                        Game1.warpFarmer(event_map, 5, 6, 1);
-                        Game1.player.completelyStopAnimatingOrDoingAction();
-                        Game1.player.Halt();
-                        Game1.player.canMove = false;
-                        Game1.player.freezePause = 0;
-
-                        DelayedAction.functionAfterDelay(() =>
-                        {
-                            location.startEvent(ev);
-                            eventString = JValue.CreateNull();
-                        }, 1000);
-                    }
+                    QueueGeneratedEvent(new Event(rawEvent.Trim(), Game1.player), event_map, 5, 6, 1);
 
                 }
             });
@@ -146,18 +161,11 @@ namespace UnlimitedEventExpansion
                 return;
 
             NPC npc = Game1.getCharacterFromName(npcTarget);
-            if (!GetNpcsWithBirthdayToday().Contains(npc))
+            if (!npc.isBirthday())
             {
                 Game1.activeClickableMenu = new DialogueBox($"It is not {npcTarget}'s birthday??");
                 return;
             }
-
-            if (Game1.timeOfDay < 1800)
-            {
-                Game1.activeClickableMenu = new DialogueBox("It is too early for the party. Come back after 6:00 PM");
-                return;
-            }
-
 
             var container = new StorageContainer(
                 new List<Item> { null },
@@ -256,10 +264,10 @@ namespace UnlimitedEventExpansion
                     $"/addObject {tile[0]} {tile[1]} {item.QualifiedItemId} 1"
                 ));
 
-                await GenerateBirthdayEvent(npcTarget, guestName, location.DisplayName, foodItems);
-                var conversationJson = eventString;
+                var aiRawString = await GenerateBirthdayEvent(npcTarget, guestName, location.DisplayName, foodItems);
+                var conversationJson = ConvertToJToken(aiRawString);
 
-                var conversation = conversationJson.ToObject<Conversation1>();
+                var conversation = conversationJson.ToObject<MultipleConversation>();
                 if (conversation != null)
                 {
                     var host_tile = data.host_tile;
@@ -297,20 +305,34 @@ namespace UnlimitedEventExpansion
                     var sb = new StringBuilder();
                     sb.Append($"{conversation.Music}/{host_tile[0]} {host_tile[1] + 2}/farmer {player_tile[0]} {player_tile[1]} {player_tile[2]} {npcTarget} {host_tile[0]} {host_tile[1]} {host_tile[2]} {guestTile}");
                     sb.Append($"{foodTile} {giftTile} {furnitureTile} {friendshipReward}");
-                    sb.Append($"/skippable/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.PlayerWarpper {event_map} {player_tile[0]} {player_tile[1]} {npcTarget}\r\n");
+                    sb.Append($"/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.PlayerWarpper {event_map} {player_tile[0]} {player_tile[1]} {npcTarget}\r\n");
                     int lineNum = 1;
                     foreach (var entry in conversation.Dialogue)
                     {
                         string portraitId = entry.Portrait;
-                        if (portraitId != null && !portraitId.StartsWith("$"))
-                            portraitId = "$" + portraitId;
 
+                        if (!string.IsNullOrEmpty(portraitId))
+                        {
+                            Match match = Regex.Match(portraitId, @"\$\d+");
+
+                            if (match.Success)
+                            {
+                                portraitId = match.Value;
+                            }
+                            else
+                            {
+                                if (!portraitId.StartsWith("$"))
+                                {
+                                    portraitId = "$" + portraitId.Trim();
+                                }
+                            }
+                        }
 
                         if (lineNum == 1)
                         {
                             if (entry.Type == "D")
                             {
-                                sb.Append($"/pause 300/beginSimultaneousCommand/speak {entry.Npc} \"{entry.Dialogue}\"{portraitId}/endSimultaneousCommand");
+                                sb.Append($"/pause 2000/beginSimultaneousCommand/speak {entry.Npc} \"{entry.Dialogue}\"{portraitId}/endSimultaneousCommand");
                                 lineNum++;
                             }
                             continue;
@@ -334,7 +356,25 @@ namespace UnlimitedEventExpansion
                             for (int i = 0; i < entry.Player.Count; i++)
                             {
                                 var option = entry.Player[i];
-                                sb.Append($"_{option.Response}_{option.Reaction}{option.Portrait}");
+                                string repPortraitId = option.Portrait;
+                                if (!string.IsNullOrEmpty(repPortraitId))
+                                {
+                                    Match match = Regex.Match(repPortraitId, @"\$\d+");
+
+                                    if (match.Success)
+                                    {
+                                        repPortraitId = match.Value;
+                                    }
+                                    else
+                                    {
+                                        if (!repPortraitId.StartsWith("$"))
+                                        {
+                                            repPortraitId = "$" + repPortraitId.Trim();
+                                        }
+                                    }
+                                }
+
+                                sb.Append($"_{option.Response}_{option.Reaction}{repPortraitId}");
                                 //if (i < entry.Player.Count - 1)
                                 //    sb.Append("_");
                             }
@@ -347,33 +387,14 @@ namespace UnlimitedEventExpansion
 
                     // Final event string
                     string rawEvent = sb.ToString();
-                    Console.WriteLine(rawEvent);
+                    //Console.WriteLine(rawEvent);
 
 
 
-                    if (!Game1.eventUp)
-                    {
-                        Event ev = new Event(rawEvent.Trim(), Game1.player);
-                        Game1.activeClickableMenu = null;
-                        Game1.warpFarmer(event_map, player_tile[0], player_tile[1], player_tile[2]);
-                        Game1.player.completelyStopAnimatingOrDoingAction();
-                        Game1.player.Halt();
-                        Game1.player.canMove = false;
-                        Game1.player.freezePause = 0;
-
-                        DelayedAction.functionAfterDelay(() =>
-                        {
-                            location.startEvent(ev);
-                            eventString = JValue.CreateNull();
-                        }, 1000);
-                    }
-
-                    //rawEvent = "ragtime/15 16/farmer 16 20 1 Haley 18 16 0/skippable" +
-                    //    "/pause 500/speak Haley \"$4 string1\"" +
-                    //    "/speak Haley \"$y 'Question?_response1._reaction1_response2_reaction2'\"" +
-                    //    "/pause 500/end";
+                    QueueGeneratedEvent(new Event(rawEvent.Trim(), Game1.player), event_map, player_tile[0], player_tile[1], player_tile[2]);
                 }
-            };
+            }
+            ;
 
 
         }
@@ -414,28 +435,31 @@ namespace UnlimitedEventExpansion
                 NPC npc = Game1.getCharacterFromName(npcTarget);
                 GameLocation location = Game1.getLocationFromName(event_map);
 
-
-
-                await GeneratePicnicEvent(npcTarget, location.DisplayName);
-                var conversationJson = eventString;
-
-                var conversation = conversationJson.ToObject<Conversation>();
-                if (conversation != null)
+                string addReward = "";
+                string foodTile = "";
+                int heartLevel = 0;
+                var items = new List<Item> { };
+                if (Game1.player.friendshipData.ContainsKey(npc.Name)) heartLevel = (int)Game1.player.friendshipData[npc.Name].Points / 250;
                 {
-                    string addReward = "";
-                    string foodTile = "";
-                    int heartLevel = 0;
-                    if (Game1.player.friendshipData.ContainsKey(npc.Name)) heartLevel = (int)Game1.player.friendshipData[npc.Name].Points / 250;
-                    {
-                        var items = new List<Item> { heartLevel <= 3 ? GetRandomEatingItemInPriceRange(0, 300) : heartLevel <= 6 ? GetRandomEatingItemInPriceRange(300, 600) : GetRandomEatingItemInPriceRange(500, 1000),
+                    items = new List<Item> { heartLevel <= 3 ? GetRandomEatingItemInPriceRange(0, 300) : heartLevel <= 6 ? GetRandomEatingItemInPriceRange(300, 600) : GetRandomEatingItemInPriceRange(500, 1000),
                             heartLevel <= 3 ? GetRandomEatingItemInPriceRange(0, 500) : heartLevel <= 6 ? GetRandomEatingItemInPriceRange(200, 600) : GetRandomEatingItemInPriceRange(350, 1000),
                             heartLevel <= 3 ? GetRandomEatingItemInPriceRange(0, 500) : heartLevel <= 6 ? GetRandomEatingItemInPriceRange(200, 600) : GetRandomEatingItemInPriceRange(350, 1000) };
 
-                        foodTile = $"/addObject {position_tile[0]} {position_tile[1] + 2} {(items[0] != null ? items[0].QualifiedItemId : "(O)350")} 1 " +
-                        $"/addObject {position_tile[0] + 3} {position_tile[1]} {(items[1] != null ? items[1].QualifiedItemId : "(O)350")} 1" +
-                        $"/addObject {position_tile[0] + 2} {position_tile[1] + 1} {(items[2] != null ? items[2].QualifiedItemId : "(O)350")} 1";
-                        addReward = items[0] != null ? $"/addItem {items[0].QualifiedItemId}" : $"/addItem (O)350";
-                    }
+                    foodTile = $"/addObject {position_tile[0]} {position_tile[1] + 2} {(items[0] != null ? items[0].QualifiedItemId : "(O)350")} 1 " +
+                    $"/addObject {position_tile[0] + 3} {position_tile[1]} {(items[1] != null ? items[1].QualifiedItemId : "(O)350")} 1" +
+                    $"/addObject {position_tile[0] + 2} {position_tile[1] + 1} {(items[2] != null ? items[2].QualifiedItemId : "(O)350")} 1";
+                    addReward = items[0] != null ? $"/addItem {items[0].QualifiedItemId}" : $"/addItem (O)350";
+                }
+
+
+
+                var aiRawString = await GeneratePicnicEvent(npcTarget, location.DisplayName, items);
+                var conversationJson = ConvertToJToken(aiRawString);
+
+                var conversation = conversationJson.ToObject<SingleConversation>();
+                if (conversation != null)
+                {
+
 
                     // gift
                     string giftTile = $"/temporaryAnimatedSprite LooseSprites\\Cursors 0 1810 88 56 9999999 1 1 {position_tile[0]} {position_tile[1]} false false 0 0 1 0 0 0 hold_last_frame";
@@ -456,20 +480,34 @@ namespace UnlimitedEventExpansion
                     var sb = new StringBuilder();
                     sb.Append($"{conversation.Music}/{player_tile[0]} {player_tile[1]}/farmer {player_tile[0]} {player_tile[1]} {player_tile[2]} {npcTarget} {npc_tile[0]} {npc_tile[1]} {npc_tile[2]}");
                     sb.Append($"{giftTile} {furnitureTile} {foodTile} /friendship {npcTarget} 20");
-                    sb.Append($"/skippable/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.PlayerWarpper {event_map} {player_tile[0]} {player_tile[1]} {npcTarget}\r\n");
+                    sb.Append($"/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.PlayerWarpper {event_map} {player_tile[0]} {player_tile[1]} {npcTarget}\r\n");
                     int lineNum = 1;
                     foreach (var entry in conversation.Dialogue)
                     {
                         string portraitId = entry.Portrait;
-                        if (portraitId != null && !portraitId.StartsWith("$"))
-                            portraitId = "$" + portraitId;
+                        if (!string.IsNullOrEmpty(portraitId))
+                        {
+                            Match match = Regex.Match(portraitId, @"\$\d+");
+
+                            if (match.Success)
+                            {
+                                portraitId = match.Value;
+                            }
+                            else
+                            {
+                                if (!portraitId.StartsWith("$"))
+                                {
+                                    portraitId = "$" + portraitId.Trim();
+                                }
+                            }
+                        }
 
 
                         if (lineNum == 1)
                         {
                             if (entry.Type == "D")
                             {
-                                sb.Append($"/pause 300/beginSimultaneousCommand/speak {npcTarget} \"{entry.Dialogue}\"{portraitId}/endSimultaneousCommand");
+                                sb.Append($"/pause 2000/beginSimultaneousCommand/speak {npcTarget} \"{entry.Dialogue}\"{portraitId}/endSimultaneousCommand");
                                 lineNum++;
                             }
                             continue;
@@ -486,7 +524,25 @@ namespace UnlimitedEventExpansion
                             for (int i = 0; i < entry.Player.Count; i++)
                             {
                                 var option = entry.Player[i];
-                                sb.Append($"_{option.Response}_{option.Reaction}{option.Portrait}");
+                                string repPortraitId = option.Portrait;
+                                if (!string.IsNullOrEmpty(repPortraitId))
+                                {
+                                    Match match = Regex.Match(repPortraitId, @"\$\d+");
+
+                                    if (match.Success)
+                                    {
+                                        repPortraitId = match.Value;
+                                    }
+                                    else
+                                    {
+                                        if (!repPortraitId.StartsWith("$"))
+                                        {
+                                            repPortraitId = "$" + repPortraitId.Trim();
+                                        }
+                                    }
+                                }
+
+                                sb.Append($"_{option.Response}_{option.Reaction}{repPortraitId}");
                                 //if (i < entry.Player.Count - 1)
                                 //    sb.Append("_");
                             }
@@ -499,26 +555,11 @@ namespace UnlimitedEventExpansion
 
                     // Final event string
                     string rawEvent = sb.ToString();
-                    Console.WriteLine(rawEvent);
+                    //Console.WriteLine(rawEvent);
 
 
 
-                    if (!Game1.eventUp)
-                    {
-                        Event ev = new Event(rawEvent.Trim(), Game1.player);
-                        Game1.activeClickableMenu = null;
-                        Game1.warpFarmer(event_map, player_tile[0], player_tile[1], 2);
-                        Game1.player.completelyStopAnimatingOrDoingAction();
-                        Game1.player.Halt();
-                        Game1.player.canMove = false;
-                        Game1.player.freezePause = 0;
-
-                        DelayedAction.functionAfterDelay(() =>
-                        {
-                            location.startEvent(ev);
-                            eventString = JValue.CreateNull();
-                        }, 1000);
-                    }
+                    QueueGeneratedEvent(new Event(rawEvent.Trim(), Game1.player), event_map, player_tile[0], player_tile[1], 2);
 
                 }
             });
@@ -595,41 +636,13 @@ namespace UnlimitedEventExpansion
 
             eligibleNPCs.Remove(requiredGuest);
 
-            string requiredAgeGroup;
-
-            if (!npcToAgeGroup.TryGetValue(requiredGuest.Name, out requiredAgeGroup))
-            {
-                requiredAgeGroup = requiredGuest.Age switch
-                {
-                    0 => "41+",
-                    1 => "16+",
-                    2 => "0+",
-                };
-            }
-
-            List<NPC> sameGroup = eligibleNPCs
-                .Where(n => npcToAgeGroup.TryGetValue(n.Name, out var g) && g == requiredAgeGroup)
-                .ToList();
-
-            List<NPC> otherGroups = eligibleNPCs
-                .Where(n => !npcToAgeGroup.TryGetValue(n.Name, out var g) || g != requiredAgeGroup)
-                .ToList();
-
             int maxGuests = (int)(npc_tiles.Count * 1);
             int remainingSlots = Math.Max(0, maxGuests - 1);
 
-            List<NPC> randomGuests = sameGroup
+            List<NPC> randomGuests = eligibleNPCs
                 .OrderBy(_ => Game1.random.Next())
                 .Take(remainingSlots)
                 .ToList();
-
-            if (randomGuests.Count < remainingSlots)
-            {
-                var fillers = otherGroups
-                    .OrderBy(_ => Game1.random.Next())
-                    .Take(remainingSlots - randomGuests.Count);
-                randomGuests.AddRange(fillers);
-            }
 
             List<NPC> guests = new() { requiredGuest };
             guests.AddRange(randomGuests);
@@ -638,7 +651,7 @@ namespace UnlimitedEventExpansion
             string guestTile = string.Join(" ", guests.Zip(npc_tiles, (npc, tile) =>
                 $"{npc.Name} {tile[0]} {tile[1]} {tile[2]}"
             ));
-            string guestName = string.Join(", ", guests.Select(npc => npc.Name));
+            string allNpcName = string.Join(", ", guests.Select(npc => npc.Name));
 
             // reward
             string reward = string.Join(" ", guests.Select(npc =>
@@ -649,16 +662,15 @@ namespace UnlimitedEventExpansion
             Task.Run(async () =>
             {
                 Random random = new Random();
-                NPC npc = Game1.getCharacterFromName(npcTarget);
                 GameLocation location = Game1.getLocationFromName(event_map);
 
 
 
-                await GenerateCampfireEvent(guestName, location.DisplayName);
-                var conversationJson = eventString;
+                var aiRawString = await GenerateCampfireEvent(allNpcName, location.DisplayName);
+                var conversationJson = ConvertToJToken(aiRawString);
 
 
-                var conversation = conversationJson.ToObject<Conversation1>();
+                var conversation = conversationJson.ToObject<MultipleConversation>();
                 if (conversation != null)
                 {
 
@@ -678,20 +690,34 @@ namespace UnlimitedEventExpansion
                     var sb = new StringBuilder();
                     sb.Append($"{conversation.Music}/{player_tile[0]} {player_tile[1]}/farmer {player_tile[0]} {player_tile[1]} {player_tile[2]} {guestTile}"); // music, view, player-npc tiles
                     sb.Append($"{setupCamp} {chairTiles} {logTiles} {furnitureTile}/friendship {npcTarget} 20");
-                    sb.Append($"/skippable/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.campfireSkipWarpper {event_map} {player_tile[0]} {player_tile[1]} {campfire_tile[0]} {campfire_tile[1]} {npcTarget}\r\n");
+                    sb.Append($"/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.campfireSkipWarpper {event_map} {player_tile[0]} {player_tile[1]} {campfire_tile[0]} {campfire_tile[1]} {npcTarget}\r\n");
                     int lineNum = 1;
                     foreach (var entry in conversation.Dialogue)
                     {
                         string portraitId = entry.Portrait;
-                        if (portraitId != null && !portraitId.StartsWith("$"))
-                            portraitId = "$" + portraitId;
+                        if (!string.IsNullOrEmpty(portraitId))
+                        {
+                            Match match = Regex.Match(portraitId, @"\$\d+");
+
+                            if (match.Success)
+                            {
+                                portraitId = match.Value;
+                            }
+                            else
+                            {
+                                if (!portraitId.StartsWith("$"))
+                                {
+                                    portraitId = "$" + portraitId.Trim();
+                                }
+                            }
+                        }
 
 
                         if (lineNum == 1)
                         {
                             if (entry.Type == "D")
                             {
-                                sb.Append($"/pause 300/beginSimultaneousCommand/speak {entry.Npc} \"{entry.Dialogue}\"{portraitId}/endSimultaneousCommand");
+                                sb.Append($"/pause 2000/beginSimultaneousCommand/speak {entry.Npc} \"{entry.Dialogue}\"{portraitId}/endSimultaneousCommand");
                                 lineNum++;
                             }
                             continue;
@@ -715,7 +741,24 @@ namespace UnlimitedEventExpansion
                             for (int i = 0; i < entry.Player.Count; i++)
                             {
                                 var option = entry.Player[i];
-                                sb.Append($"_{option.Response}_{option.Reaction}{option.Portrait}");
+                                string repPortraitId = option.Portrait;
+                                if (!string.IsNullOrEmpty(repPortraitId))
+                                {
+                                    Match match = Regex.Match(repPortraitId, @"\$\d+");
+
+                                    if (match.Success)
+                                    {
+                                        repPortraitId = match.Value;
+                                    }
+                                    else
+                                    {
+                                        if (!repPortraitId.StartsWith("$"))
+                                        {
+                                            repPortraitId = "$" + repPortraitId.Trim();
+                                        }
+                                    }
+                                }
+                                sb.Append($"_{option.Response}_{option.Reaction}{repPortraitId}");
                                 //if (i < entry.Player.Count - 1)
                                 //    sb.Append("_");
                             }
@@ -728,30 +771,13 @@ namespace UnlimitedEventExpansion
 
                     // Final event string
                     string rawEvent = sb.ToString();
-                    Console.WriteLine(rawEvent);
+                    //Console.WriteLine(rawEvent);
 
 
-                    if (!Game1.eventUp)
-                    {
-                        Event ev = new Event(rawEvent.Trim(), Game1.player);
-                        Game1.activeClickableMenu = null;
-                        Game1.warpFarmer(event_map, player_tile[0], player_tile[1], 2);
-                        Game1.player.completelyStopAnimatingOrDoingAction();
-                        Game1.player.Halt();
-                        Game1.player.canMove = false;
-                        Game1.player.freezePause = 0;
-
-                        DelayedAction.functionAfterDelay(() =>
-                        {
-                            location.startEvent(ev);
-                            eventString = JValue.CreateNull();
-                        }, 1000);
-                    }
+                    QueueGeneratedEvent(new Event(rawEvent.Trim(), Game1.player), event_map, player_tile[0], player_tile[1], 2);
 
                 }
             });
-
-
         }
     }
 }

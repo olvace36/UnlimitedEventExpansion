@@ -1,8 +1,0 @@
-C:\Users\Ha\Desktop\UnlimitedEventExpansion\bin\Debug\net6.0\UnlimitedEventExpansion.deps.json
-C:\Users\Ha\Desktop\UnlimitedEventExpansion\bin\Debug\net6.0\UnlimitedEventExpansion.dll
-C:\Users\Ha\Desktop\UnlimitedEventExpansion\obj\Debug\net6.0\UnlimitedEventExpansion.csproj.AssemblyReference.cache
-C:\Users\Ha\Desktop\UnlimitedEventExpansion\obj\Debug\net6.0\UnlimitedEventExpansion.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\Ha\Desktop\UnlimitedEventExpansion\obj\Debug\net6.0\UnlimitedEventExpansion.AssemblyInfoInputs.cache
-C:\Users\Ha\Desktop\UnlimitedEventExpansion\obj\Debug\net6.0\UnlimitedEventExpansion.AssemblyInfo.cs
-C:\Users\Ha\Desktop\UnlimitedEventExpansion\obj\Debug\net6.0\UnlimitedEventExpansion.csproj.CoreCompileInputs.cache
-C:\Users\Ha\Desktop\UnlimitedEventExpansion\obj\Debug\net6.0\UnlimitedEventExpansion.dll
