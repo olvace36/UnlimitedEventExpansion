@@ -525,7 +525,7 @@ namespace UnlimitedEventExpansion
                     {
                         string displayTime = FormatEventTimeForDisplay(normalizedEventTime);
                         string feedback = $"Scheduled {eventType} with {npcDisplayName} at {displayTime}.";
-                        Game1.addHUDMessage(new HUDMessage(feedback, 2));
+                        iSmartPhoneApi.SendSmartphoneNotification(feedback, "Unlimited Events Expansion");
                     }
                 },
                 onCancel: () =>

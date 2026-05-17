@@ -6,7 +6,7 @@
   "UniqueID": "d5a1lamdtd.UnlimitedEventExpansion",
   "EntryDll": "UnlimitedEventExpansion.dll",
   "MinimumApiVersion": "4.0.0",
-  "UpdateKeys": [ "Nexus:00000" ], // 19309 27343
+  "UpdateKeys": [ "Nexus:46249" ], // 19309 27343 46248 46249 46250
   "Dependencies":[
     {  
       "UniqueID": "Pathoschild.ContentPatcher",
