@@ -210,7 +210,7 @@ namespace UnlimitedEventExpansion
             "(F)RetroPlant",
             "(F)TallHousePlant"
         };
-        
+
         public static List<string> socialNpcBlacklist = new List<string>
         {
             "Leo",
@@ -303,12 +303,15 @@ namespace UnlimitedEventExpansion
             public List<PlayerResponse> Player { get; set; } = new();
         }
 
-        public static BirthdayMapData GetBirthdayMapDataForNPC(NPC npc)
+        public static BirthdayMapData GetBirthdayMapDataForNPC(NPC? npc)
         {
-            string mapKey = npc.DefaultMap;
-            if (birthdayMap.TryGetValue(mapKey, out var data))
+            if (npc != null)
             {
-                return data;
+                string mapKey = npc.DefaultMap;
+                if (birthdayMap.TryGetValue(mapKey, out var data))
+                {
+                    return data;
+                }
             }
 
             List<string> fallbackOptions = new List<string> { "Saloon" };
@@ -350,9 +353,32 @@ namespace UnlimitedEventExpansion
             return filteredItems[index];
         }
 
+        public static void CheckTodayPlayerBirthday()
+        {
+            string playerBirthDate = iSmartPhoneApi.GetPlayerBirthDate();
+            string playerBirthSeason = iSmartPhoneApi.GetPlayerBirthSeason();
+            if (string.IsNullOrWhiteSpace(playerBirthDate) || string.IsNullOrWhiteSpace(playerBirthSeason))
+            {
+                return;
+            }
 
 
-
+            if (playerBirthDate == Game1.dayOfMonth.ToString() && string.Equals(playerBirthSeason, Game1.currentSeason, StringComparison.OrdinalIgnoreCase))
+            {
+                Game1.activeClickableMenu = new ConfirmationDialog(
+                    $"It is your birthday today. Want to celebrate it?",
+                    onConfirm: (Farmer who) =>
+                    {
+                        Game1.activeClickableMenu = null;
+                        TryOpenSchedulePlayerBirthdayMenu();
+                    },
+                    onCancel: (Farmer who) =>
+                    {
+                        Game1.activeClickableMenu = null;
+                    }
+                );
+            }
+        }
     }
 
 

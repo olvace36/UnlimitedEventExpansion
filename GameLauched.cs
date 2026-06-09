@@ -451,6 +451,8 @@ namespace UnlimitedEventExpansion
             totalSkippedEvent = 0;
             PendingUnlimitedEvents.Clear();
             TotalEventRegisteredToday = 0;
+
+            CheckTodayPlayerBirthday();
         }
 
 
@@ -484,6 +486,9 @@ namespace UnlimitedEventExpansion
                                 break;
                             case "dine out":
                                 TriggerDineOutEvent(npcName);
+                                break;
+                            case "playerbirthday":
+                                TriggerPlayerBirthdayEvent(scheduledEvent.LocationName, scheduledEvent.ParticipantNames);
                                 break;
                         }
 

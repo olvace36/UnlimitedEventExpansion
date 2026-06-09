@@ -814,5 +814,242 @@ namespace UnlimitedEventExpansion
                 }
             });
         }
+
+        public static void TriggerPlayerBirthdayEvent(string? selectedLocation = null, List<string>? selectedParticipantNames = null)
+        {
+            if (Game1.eventUp || !CanTriggerEvent())
+                return;
+
+            Task.Run(async () =>
+            {
+                Random random = new Random();
+                BirthdayMapData data;
+                if (!string.IsNullOrWhiteSpace(selectedLocation)
+                    && birthdayMap.TryGetValue(selectedLocation, out BirthdayMapData selectedData)
+                    && selectedData != null
+                    && Game1.getLocationFromName(selectedData.event_map) != null)
+                {
+                    data = selectedData;
+                }
+                else
+                {
+                    data = GetBirthdayMapDataForNPC(null);
+                }
+
+                var event_map = data.event_map;
+                var npc_tiles = data.npc_tiles;
+                var gift_tiles = data.gift_tiles;
+                var required_npc = data.required_npc;
+                GameLocation location = Game1.getLocationFromName(event_map);
+
+
+                // guest
+                List<NPC> allVillagers = Utility.getAllVillagers().ToList();
+                int count = Math.Min(npc_tiles.Count, allVillagers.Count);
+                List<string> requiredNpcNames = required_npc.ToList();
+
+                var eligibleNPCs = allVillagers
+                    .Where(npc => !socialNpcBlacklist.Contains(npc.Name)
+                        && !npc.IsInvisible
+                        && npc.CanSocialize
+                        && Game1.player.friendshipData.ContainsKey(npc.Name)
+                        && (int)Game1.player.friendshipData[npc.Name].Points / 250 > 1
+                        )
+                    .ToList();
+
+                bool hasManualSelection = selectedParticipantNames != null && selectedParticipantNames.Any();
+                List<NPC> visitor;
+                if (hasManualSelection)
+                {
+                    HashSet<string> desiredNames = new HashSet<string>(selectedParticipantNames.Where(name => !string.IsNullOrWhiteSpace(name)).Select(name => name.Trim()), StringComparer.OrdinalIgnoreCase);
+                    foreach (string requiredName in requiredNpcNames)
+                    {
+                        if (!string.IsNullOrWhiteSpace(requiredName))
+                            desiredNames.Add(requiredName.Trim());
+                    }
+
+                    visitor = allVillagers
+                        .Where(candidate => desiredNames.Contains(candidate.Name))
+                        .GroupBy(candidate => candidate.Name, StringComparer.OrdinalIgnoreCase)
+                        .Select(group => group.First())
+                        .Take(npc_tiles.Count)
+                        .ToList();
+                }
+                else
+                {
+                    List<NPC> requiredVisitors = eligibleNPCs
+                        .Where(candidate => requiredNpcNames.Contains(candidate.Name))
+                        .ToList();
+
+                    List<NPC> pool = eligibleNPCs
+                        .Where(candidate => !requiredVisitors.Contains(candidate))
+                        .ToList();
+
+                    int remainingSlots = npc_tiles.Count - requiredVisitors.Count;
+                    List<NPC> randomVisitors = pool
+                        .OrderBy(candidate => random.Next())
+                        .Take(remainingSlots)
+                        .ToList();
+
+                    visitor = requiredVisitors.Concat(randomVisitors).ToList();
+                }
+
+
+                Shuffle(npc_tiles);
+                string guestTile = string.Join(" ", visitor.Zip(npc_tiles, (npc, tile) =>
+                    $"{npc.Name} {tile[0]} {tile[1]} {tile[2]}"
+                ));
+
+
+                Shuffle(visitor);
+                string guestName = string.Join(", ", visitor.Select(v => v.Name));
+                string friendshipReward = string.Join(" ", visitor.Select(npc => $"/friendship {npc.Name} 20"));
+                string guestMessage = string.Join(" ",
+                    visitor.OrderBy(_ => Guid.NewGuid()).Take(visitor.Count / 3)
+                    .Select(npc => Game1.random.NextBool() ? $"/textAboveHead {npc.Name} \"Happy birthday {Game1.player.Name}\"" : $"/textAboveHead {npc.Name} \"Best wish to you {Game1.player.Name}\""));
+
+                // food tile
+
+                var food_tiles = data.food_tiles;
+                var foodItems = new List<Item>();
+
+                Item pinkCake = cookingItems.FirstOrDefault(item => item?.Name == "Pink Cake");
+                if (pinkCake != null)
+                    foodItems.Add(pinkCake);
+
+                var otherItems = cookingItems
+                    .Where(item => item?.Name != "Pink Cake")
+                    .OrderBy(_ => Game1.random.Next())
+                    .Take(food_tiles.Count - 1);
+
+                foodItems.AddRange(otherItems);
+
+                string foodTile = string.Join(" ", food_tiles.Zip(foodItems, (tile, item) =>
+                    $"/addObject {tile[0]} {tile[1]} {item.QualifiedItemId} 1"
+                ));
+
+
+                string addReward = string.Join(" ", food_tiles.Zip(foodItems, (tile, item) =>
+                    $"/addItem {item.QualifiedItemId}"
+                ));
+
+                var aiRawString = await GeneratePlayerBirthdayEvent(guestName, location.DisplayName, foodItems);
+                var conversationJson = ConvertToJToken(aiRawString);
+
+                var conversation = conversationJson.ToObject<MultipleConversation>();
+                if (conversation != null)
+                {
+                    var host_tile = data.host_tile;
+                    var player_tile = data.player_tile;
+                    var decorable_tiles = data.decorable_tiles;
+
+
+                    // furniture
+                    string furnitureTile = string.Join(" ", decorable_tiles.Select(tile =>
+                    {
+                        string furnitureId = furnitureItems[Game1.random.Next(furnitureItems.Count)].Trim();
+                        string furnitureIdShort = furnitureId.Replace("(F)", "").Trim();
+                        var rect = Furniture.GetDefaultSourceRect(furnitureIdShort);
+
+                        int tileHeight = rect.Height / 16;
+                        int adjustedY = tile[1] - (tileHeight - 1);
+
+                        return $"/addObject {tile[0]} {adjustedY} {furnitureId} 0";
+                    }));
+
+                    // gift
+                    string giftTile = string.Join(" ", gift_tiles.Select(tile =>
+                    {
+                        string randomBox = new List<string> { "384 352 16 16", "400 352 16 16", "416 352 16 16", "432 352 16 16" }[Game1.random.Next(4)];
+                        return $"/temporaryAnimatedSprite Maps\\festivals {randomBox} 9999999 1 1 {tile[0]} {tile[1]} false false 0 0 1 0 0 0 hold_last_frame";
+                    }));
+
+                    var sb = new StringBuilder();
+                    sb.Append($"{conversation.Music}/{host_tile[0]} {host_tile[1] + 2}/farmer {host_tile[0]} {host_tile[1]} {host_tile[2]} {guestTile}/fade");
+                    sb.Append($"{foodTile} {giftTile} {furnitureTile} {friendshipReward}");
+                    sb.Append($"/pause 400/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.PlayerWarpper {event_map} {player_tile[0]} {player_tile[1]} null\r\n");
+                    int lineNum = 1;
+                    foreach (var entry in conversation.Dialogue)
+                    {
+                        string portraitId = entry.Portrait;
+
+                        if (!string.IsNullOrEmpty(portraitId))
+                        {
+                            Match match = Regex.Match(portraitId, @"\$\d+");
+
+                            if (match.Success)
+                            {
+                                portraitId = match.Value;
+                            }
+                            else
+                            {
+                                if (!portraitId.StartsWith("$"))
+                                {
+                                    portraitId = "$" + portraitId.Trim();
+                                }
+                            }
+                        }
+
+                        if (lineNum == 1)
+                        {
+                            if (entry.Type == "D")
+                            {
+                                sb.Append($"/pause 2000/beginSimultaneousCommand/speak {entry.Npc} \"{entry.Dialogue}\"{portraitId}/endSimultaneousCommand");
+                                lineNum++;
+                            }
+                            continue;
+                        }
+
+                        sb.Append($"/beginSimultaneousCommand");
+                        for (int i = 0; i < Game1.random.Next(0, 2); i++)
+                        {
+                            sb.Append($"/emote {visitor[Game1.random.Next(visitor.Count)].Name} {new List<string> { "20", "32", "56" }[Game1.random.Next(3)]} ");
+                        }
+                        sb.Append($"/endSimultaneousCommand");
+                        if (entry.Type == "D")
+                        {
+                            sb.Append($"/pause 300/speak {entry.Npc} \"{entry.Dialogue}\"{portraitId}");
+                            lineNum++;
+                        }
+                        else if (entry.Type == "Q")
+                        {
+
+                            sb.Append($"/speak {entry.Npc} \"$y '{entry.Dialogue}");
+                            for (int i = 0; i < entry.Player.Count; i++)
+                            {
+                                var option = entry.Player[i];
+                                string repPortraitId = option.Portrait;
+                                if (!string.IsNullOrEmpty(repPortraitId))
+                                {
+                                    Match match = Regex.Match(repPortraitId, @"\$\d+");
+
+                                    if (match.Success)
+                                    {
+                                        repPortraitId = match.Value;
+                                    }
+                                    else
+                                    {
+                                        if (!repPortraitId.StartsWith("$"))
+                                        {
+                                            repPortraitId = "$" + repPortraitId.Trim();
+                                        }
+                                    }
+                                }
+
+                                sb.Append($"_{option.Response}_{option.Reaction}{repPortraitId}");
+                            }
+                            sb.Append("'\"");
+                        }
+                    }
+
+                    // Wrap up the event
+                    sb.Append($"{addReward}/pause 500/end position {player_tile[0]} {player_tile[1]}");
+                    string rawEvent = sb.ToString();
+
+                    QueueGeneratedEvent(new Event(rawEvent.Trim(), Game1.player), event_map, player_tile[0], player_tile[1], player_tile[2]);
+                }
+            }
+            );
+        }
     }
 }

@@ -178,7 +178,9 @@ namespace UnlimitedEventExpansion
             {
                 Game1.drawDialogueBox(xPositionOnScreen, yPositionOnScreen, width, height, false, true);
 
-                string title = $"Schedule {eventDisplayName} with {npcDisplayName}";
+                string title = string.IsNullOrWhiteSpace(npcDisplayName)
+                    ? $"Schedule {eventDisplayName}"
+                    : $"Schedule {eventDisplayName} with {npcDisplayName}";
                 Vector2 titleSize = Game1.dialogueFont.MeasureString(title);
                 Vector2 titlePosition = new Vector2(xPositionOnScreen + (width - titleSize.X) / 2f, yPositionOnScreen + 96f);
                 Utility.drawTextWithShadow(b, title, Game1.dialogueFont, titlePosition, Game1.textColor);
@@ -641,7 +643,9 @@ namespace UnlimitedEventExpansion
             {
                 Game1.drawDialogueBox(xPositionOnScreen, yPositionOnScreen, width, height, false, true);
 
-                string title = $"Pick {eventDisplayName} location ({npcDisplayName})";
+                string title = string.IsNullOrWhiteSpace(npcDisplayName)
+                    ? $"Pick {eventDisplayName} location"
+                    : $"Pick {eventDisplayName} location ({npcDisplayName})";
                 Vector2 titleSize = Game1.dialogueFont.MeasureString(title);
                 Utility.drawTextWithShadow(
                     b,
@@ -901,7 +905,9 @@ namespace UnlimitedEventExpansion
             {
                 Game1.drawDialogueBox(xPositionOnScreen, yPositionOnScreen, width, height, false, true);
 
-                string title = $"Pick attendees for {eventDisplayName}";
+                string title = string.IsNullOrWhiteSpace(npcDisplayName)
+                    ? $"Pick guests for {eventDisplayName}"
+                    : $"Pick attendees for {eventDisplayName}";
                 Vector2 titleSize = Game1.dialogueFont.MeasureString(title);
                 Utility.drawTextWithShadow(
                     b,
@@ -1066,6 +1072,7 @@ namespace UnlimitedEventExpansion
         private static bool RequiresLocationAndNpcSelection(string eventType)
         {
             return string.Equals(eventType, "Birthday", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(eventType, "PlayerBirthday", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(eventType, "Picnic", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(eventType, "Campfire", StringComparison.OrdinalIgnoreCase);
         }
@@ -1235,6 +1242,37 @@ namespace UnlimitedEventExpansion
                     });
                 }
             }
+            else if (string.Equals(eventType, "PlayerBirthday", StringComparison.OrdinalIgnoreCase))
+            {
+                if (birthdayMap.TryGetValue("Saloon", out BirthdayMapData saloonData)
+                    && saloonData != null && !string.IsNullOrWhiteSpace(saloonData.event_map)
+                    && Game1.getLocationFromName(saloonData.event_map) != null)
+                {
+                    options.Add(new EventLocationOption
+                    {
+                        Key = "Saloon",
+                        DisplayName = Game1.getLocationFromName(saloonData.event_map)?.DisplayName ?? saloonData.event_map,
+                        MaxParticipants = saloonData.npc_tiles?.Count ?? 0,
+                        RequiredNpcNames = saloonData.required_npc?.Where(name => !string.IsNullOrWhiteSpace(name))
+                            .Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? new List<string>()
+                    });
+                }
+
+                if (Game1.MasterPlayer.hasCompletedCommunityCenter()
+                    && birthdayMap.TryGetValue("CommunityCenter", out BirthdayMapData ccData)
+                    && ccData != null && !string.IsNullOrWhiteSpace(ccData.event_map)
+                    && Game1.getLocationFromName(ccData.event_map) != null)
+                {
+                    options.Add(new EventLocationOption
+                    {
+                        Key = "CommunityCenter",
+                        DisplayName = Game1.getLocationFromName(ccData.event_map)?.DisplayName ?? ccData.event_map,
+                        MaxParticipants = ccData.npc_tiles?.Count ?? 0,
+                        RequiredNpcNames = ccData.required_npc?.Where(name => !string.IsNullOrWhiteSpace(name))
+                            .Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? new List<string>()
+                    });
+                }
+            }
             else if (string.Equals(eventType, "Picnic", StringComparison.OrdinalIgnoreCase))
             {
                 foreach ((string key, PicnicMapData data) in picnicMap)
@@ -1280,6 +1318,8 @@ namespace UnlimitedEventExpansion
             int maxParticipants = 0;
             if (string.Equals(eventType, "Birthday", StringComparison.OrdinalIgnoreCase) && birthdayMap.TryGetValue(selectedLocation, out BirthdayMapData? birthdayData))
                 maxParticipants = birthdayData?.npc_tiles?.Count ?? 0;
+            else if (string.Equals(eventType, "PlayerBirthday", StringComparison.OrdinalIgnoreCase) && birthdayMap.TryGetValue(selectedLocation, out BirthdayMapData? playerBirthdayData))
+                maxParticipants = playerBirthdayData?.npc_tiles?.Count ?? 0;
             else if (string.Equals(eventType, "Campfire", StringComparison.OrdinalIgnoreCase) && campfireMap.TryGetValue(selectedLocation, out CampfireMapData? campfireData))
                 maxParticipants = campfireData?.npc_tiles?.Count ?? 0;
             else if (string.Equals(eventType, "Picnic", StringComparison.OrdinalIgnoreCase) && picnicMap.TryGetValue(selectedLocation, out PicnicMapData? picnicData))
@@ -1289,6 +1329,7 @@ namespace UnlimitedEventExpansion
             if (string.Equals(eventType, "Birthday", StringComparison.OrdinalIgnoreCase) && lockedNames.Any(name => string.Equals(name, eventNpcName, StringComparison.OrdinalIgnoreCase)))
                 lockedForCapacity -= 1;
 
+            // For PlayerBirthday the player occupies host_tile, not npc_tiles, so no subtraction needed.
             info.OptionalLimit = Math.Max(0, maxParticipants - Math.Max(0, lockedForCapacity));
 
             List<string> lockedOrdered = lockedNames
@@ -1316,6 +1357,17 @@ namespace UnlimitedEventExpansion
                 && birthdayData?.required_npc != null)
             {
                 foreach (string requiredName in birthdayData.required_npc)
+                {
+                    if (!string.IsNullOrWhiteSpace(requiredName))
+                        lockedNames.Add(requiredName.Trim());
+                }
+            }
+
+            if (string.Equals(eventType, "PlayerBirthday", StringComparison.OrdinalIgnoreCase)
+                && birthdayMap.TryGetValue(selectedLocation, out BirthdayMapData? playerBirthdayData)
+                && playerBirthdayData?.required_npc != null)
+            {
+                foreach (string requiredName in playerBirthdayData.required_npc)
                 {
                     if (!string.IsNullOrWhiteSpace(requiredName))
                         lockedNames.Add(requiredName.Trim());
@@ -1371,9 +1423,11 @@ namespace UnlimitedEventExpansion
             string locationLabel = string.IsNullOrWhiteSpace(selectedLocation)
                 ? string.Empty
                 : $" at {(Game1.getLocationFromName(selectedLocation)?.DisplayName ?? selectedLocation)}";
-            string feedback = $"Scheduled {eventType} with {npcDisplayName} at {displayTime}{locationLabel}.";
+            string feedback = string.IsNullOrWhiteSpace(eventNpcName)
+                ? $"Scheduled {eventType} at {displayTime}{locationLabel}."
+                : $"Scheduled {eventType} with {npcDisplayName} at {displayTime}{locationLabel}.";
 
-            if (!string.IsNullOrWhiteSpace(npcResponseTemplate))
+            if (!string.IsNullOrWhiteSpace(npcResponseTemplate) && !string.IsNullOrWhiteSpace(eventNpcName))
                 iSmartPhoneApi.SendSmartphoneMessageFromNPC(eventNpcName, npcResponseTemplate);
 
             iSmartPhoneApi.SendSmartphoneNotification(feedback, "Unlimited Events Expansion");
@@ -1415,6 +1469,19 @@ namespace UnlimitedEventExpansion
             OpenTimeSelectionMenu(eventNpcName, npcDisplayName, eventType, npcResponseTemplate, null, null, null);
         }
 
+        public static void TryOpenSchedulePlayerBirthdayMenu()
+        {
+            if (!TryGetMinimumAllowedEventTime(out _))
+            {
+                Game1.playSound("cancel");
+                Game1.addHUDMessage(new HUDMessage(TooLateToScheduleMessage, 3));
+                return;
+            }
+
+            string playerDisplayName = Game1.player.Name;
+            OpenTimeSelectionMenu("", playerDisplayName, "PlayerBirthday", null, null, null, null);
+        }
+
         private static bool TryAddPendingUnlimitedEvent(
             string npcName,
             string eventType,
@@ -1454,7 +1521,8 @@ namespace UnlimitedEventExpansion
                 LocationName = normalizedLocation,
                 ParticipantNames = normalizedParticipants
             });
-            TotalEventRegisteredToday++;
+            if (!string.Equals(normalizedEventType, "PlayerBirthday", StringComparison.OrdinalIgnoreCase))
+                TotalEventRegisteredToday++;
             return true;
         }
 
