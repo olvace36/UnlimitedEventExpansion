@@ -29,6 +29,7 @@ using UnlimitedEventExpansion;
 using UnlimitedEventExpansion.Data;
 using ContentPatcher;
 using StardewValley.GameData.Objects;
+using StardewValley.Pathfinding;
 
 
 namespace UnlimitedEventExpansion
@@ -92,13 +93,13 @@ namespace UnlimitedEventExpansion
             if (totalSkippedEvent >= 3)
             {
                 Game1.drawLetterMessage("=== Event Skipping Warning ===^^You have skipped too many events. You will no longer able to get new event during this session.^^It is sad!!!^HaPyke.");
-                iSmartPhoneApi.SendSmartphoneMessageFromNPC(args[4], "I am very unhappy that you left at the middle of our conversation. It is very rude of you!");
+                iAppMessengerApi.SendSmartphoneMessageFromNPC(args[4], "I am very unhappy that you left at the middle of our conversation. It is very rude of you!");
             }
             else if (totalSkippedEvent >= 1)
             {
                 Game1.drawLetterMessage("=== Event Skipping Warning ===^^Please note that each event cost $real-world USD$ to create. If you don’t wish to participate in an event, PLEASE <<cancel the invitation.<<^^" +
                     "]] Continuing to skip events may temporary prevent you from getting new events.^^Thank you for your understanding, HaPyke +++");
-                iSmartPhoneApi.SendSmartphoneMessageFromNPC(args[4], "You dissappeared at the middle of our conversation. Please let me know next time so I don't have to look for you around.");
+                iAppMessengerApi.SendSmartphoneMessageFromNPC(args[4], "You dissappeared at the middle of our conversation. Please let me know next time so I don't have to look for you around.");
             }
 
             return true;
@@ -208,13 +209,13 @@ namespace UnlimitedEventExpansion
             if (totalSkippedEvent >= 3)
             {
                 Game1.drawLetterMessage("=== Event Skipping Warning ===^^You have skipped too many events. You will no longer able to get new event during this session.^^It is sad!!!^HaPyke.");
-                iSmartPhoneApi.SendSmartphoneMessageFromNPC(args[4], "I am very unhappy that you left at the middle of our conversation. It is very rude of you!");
+                iAppMessengerApi.SendSmartphoneMessageFromNPC(args[4], "I am very unhappy that you left at the middle of our conversation. It is very rude of you!");
             }
             else if (totalSkippedEvent >= 1)
             {
                 Game1.drawLetterMessage("=== Event Skipping Warning ===^^Please note that each event cost $real-world USD$ to create. If you don’t wish to participate in an event, PLEASE <<cancel the invitation.<<^^" +
                     "]] Continuing to skip events may temporary prevent you from getting new events.^^Thank you for your understanding, HaPyke +++");
-                iSmartPhoneApi.SendSmartphoneMessageFromNPC(args[4], "You dissappeared at the middle of our conversation. Please let me know next time so I don't have to look for you around.");
+                iAppMessengerApi.SendSmartphoneMessageFromNPC(args[4], "You dissappeared at the middle of our conversation. Please let me know next time so I don't have to look for you around.");
             }
 
             return true;
@@ -230,9 +231,10 @@ namespace UnlimitedEventExpansion
             var api = this.Helper.ModRegistry.GetApi<IContentPatcherAPI>("Pathoschild.ContentPatcher");
             ConfigMenu(api, this.ModManifest, Helper);
 
-            iSmartPhoneApi = SHelper.ModRegistry.GetApi<ISmartPhoneApi>("d5a1lamdtd.Smartphone");
+            iAppMessengerApi = SHelper.ModRegistry.GetApi<IAppMessengerApi>("d5a1lamdtd.Smartphone-AppMessenger");
+            iSmartphoneApi = SHelper.ModRegistry.GetApi<ISmartphoneApi>("d5a1lamdtd.Smartphone");
 
-            if (iSmartPhoneApi == null)
+            if (iAppMessengerApi == null)
             {
                 Monitor.Log("Smartphone mod is not installed.", LogLevel.Warn);
             }
@@ -241,28 +243,28 @@ namespace UnlimitedEventExpansion
                 this.Monitor.Log("Smartphone loaded.", LogLevel.Trace);
                 bool AllowEarlyEvent = !string.IsNullOrWhiteSpace(Config.Key) && Config.AllowEarlyEvent;
 
-                iSmartPhoneApi.RegisterUnlimitedEvent(
+                iAppMessengerApi.RegisterUnlimitedEvent(
                     ownerModId: this.ModManifest.UniqueID,
                     eventType: "Birthday",
                     triggerEvent: npcName => TriggerNpcBirthdayEvent(npcName),
                     minimumHeartLevel: AllowEarlyEvent ? 0 : 2,
                     toolDescription: "");
 
-                iSmartPhoneApi.RegisterUnlimitedEvent(
+                iAppMessengerApi.RegisterUnlimitedEvent(
                     ownerModId: this.ModManifest.UniqueID,
                     eventType: "Campfire",
                     triggerEvent: npcName => TriggerCampingEvent(npcName),
                     minimumHeartLevel: AllowEarlyEvent ? 0 : 3,
                     toolDescription: "");
 
-                iSmartPhoneApi.RegisterUnlimitedEvent(
+                iAppMessengerApi.RegisterUnlimitedEvent(
                     ownerModId: this.ModManifest.UniqueID,
                     eventType: "Picnic",
                     triggerEvent: npcName => TriggerPicnicEvent(npcName),
                     minimumHeartLevel: AllowEarlyEvent ? 0 : 4,
                     toolDescription: "");
 
-                iSmartPhoneApi.RegisterUnlimitedEvent(
+                iAppMessengerApi.RegisterUnlimitedEvent(
                     ownerModId: this.ModManifest.UniqueID,
                     eventType: "Dine Out",
                     triggerEvent: npcName => TriggerDineOutEvent(npcName),
@@ -292,7 +294,7 @@ namespace UnlimitedEventExpansion
                                 SMonitor.Log($"UnlimitedEventExpansion: Newer version available", LogLevel.Warn);
                                 Game1.drawLetterMessage("=== UnlimitedEventExpansion ===^^Newer version is available. Your current version may be outdated and no longer working.^^");
 
-                                iSmartPhoneApi.SendSmartphoneNotification("=== UnlimitedEventExpansion ===^^Newer version is available. Your current version may be outdated and no longer working.^^", "UnlimitedEventExpansion");
+                                iSmartphoneApi.SendSmartphoneNotification("=== UnlimitedEventExpansion ===^^Newer version is available. Your current version may be outdated and no longer working.^^", "UnlimitedEventExpansion");
                             }
                             catch (Exception ex)
                             {
@@ -452,7 +454,139 @@ namespace UnlimitedEventExpansion
             PendingUnlimitedEvents.Clear();
             TotalEventRegisteredToday = 0;
 
-            CheckTodayPlayerBirthday();
+            //CheckTodayPlayerBirthday();
+        }
+        public static string ConvertPathToAdvancedMove(Point startPoint, Stack<Point> path)
+        {
+            if (path == null || path.Count == 0) return "";
+
+            var moveString = new System.Text.StringBuilder();
+
+            Point currentPos = startPoint;
+            int accumX = 0;
+            int accumY = 0;
+
+            foreach (Point nextPos in path)
+            {
+                if (nextPos == currentPos) continue;
+
+                int dx = nextPos.X - currentPos.X;
+                int dy = nextPos.Y - currentPos.Y;
+
+                if ((dx != 0 && accumY != 0) || (dy != 0 && accumX != 0))
+                {
+                    if (accumX != 0 || accumY != 0)
+                    {
+                        moveString.Append($"{accumX} {accumY} ");
+                    }
+                    accumX = 0;
+                    accumY = 0;
+                }
+
+                accumX += dx;
+                accumY += dy;
+
+                currentPos = nextPos;
+            }
+
+            if (accumX != 0 || accumY != 0)
+            {
+                moveString.Append($"{accumX} {accumY}");
+            }
+
+            return moveString.ToString().Trim();
+        }
+
+
+        public static (string, string, string) RandomPathCommand(string locationName, int finalX, int finalY, int finalFacingDirection, string npcName, string hiTarget)
+        {
+            var endPoint = new Point(finalX, finalY);
+            var location = Game1.getLocationFromName(locationName);
+            var character = Game1.getCharacterFromName(npcName);
+
+            if (character == null)
+            {
+                character = Game1.getCharacterFromName("Lewis");
+            }
+
+            PathFindController.isAtEnd endFunction = delegate (PathNode currentNode, Point end, GameLocation loc, Character c)
+            {
+                return currentNode.x == end.X && currentNode.y == end.Y;
+            };
+
+            Point startPoint = Point.Zero;
+            Stack<Point> absolutePath = null;
+            bool pathFound = false;
+
+            for (int i = 0; i < 10; i++)
+            {
+                int offsetX = Game1.random.Next(-9, 12);
+                int offsetY = Game1.random.Next(-7, 8);
+
+                if (Math.Abs(offsetX) < 5 && Math.Abs(offsetY) < 5) continue;
+
+                Point testStartPoint = new Point(endPoint.X + offsetX, endPoint.Y + offsetY);
+
+                if (testStartPoint == endPoint || !IsWalkableWarpTile(location, testStartPoint.X, testStartPoint.Y)) continue;
+
+                absolutePath = PathFindController.findPath(
+                    testStartPoint, endPoint, endFunction, location, character, 30
+                );
+
+                if (absolutePath != null)
+                {
+                    startPoint = testStartPoint;
+                    pathFound = true;
+                    break;
+                }
+            }
+
+            if (!pathFound)
+            {
+                return ($"{finalX} {finalY} {finalFacingDirection}", "", "");
+            }
+
+            string dynamicPath = ConvertPathToAdvancedMove(startPoint, absolutePath);
+
+            string startPosition = "";
+            string moveCommand = "";
+            string proceedCommand = "";
+
+            if (!string.IsNullOrEmpty(dynamicPath))
+            {
+                var startNpcPosition = $"{startPoint.X} {startPoint.Y}";
+                var finalNpcPosition = $"{endPoint.X} {endPoint.Y}";
+
+                // Piece 1: Just the coordinates and direction
+                startPosition = $"{startNpcPosition} {finalFacingDirection}";
+
+                // Piece 2: The actual movement and text
+                moveCommand = $"/advancedMove {npcName} false {dynamicPath} {(finalFacingDirection == 0 ? 4 : finalFacingDirection)} 1000";
+
+                if (Game1.random.NextDouble() < 0.5)
+                {
+                    moveCommand += $"/pause {Game1.random.Next(200, 501)}/textAboveHead {npcName} \"{Game1.random.Choose("Hey", "Hi", "Hello", "How are you")} {hiTarget}\"";
+                }
+
+                // Piece 3: The blocker
+                proceedCommand = $"/proceedPosition {npcName} {finalNpcPosition}";
+            }
+            else
+            {
+                // Fallback
+                return ($"{finalX} {finalY} {finalFacingDirection}", "", "");
+            }
+
+            return (startPosition, moveCommand, proceedCommand);
+        }
+
+        private static bool IsWalkableWarpTile(GameLocation location, int tileX, int tileY)
+        {
+            var tile = new Vector2(tileX, tileY);
+            if (!location.CanSpawnCharacterHere(tile))
+                return false;
+
+            return true;
         }
 
 
@@ -499,71 +633,6 @@ namespace UnlimitedEventExpansion
             }
 
             return;
-            if (CanTriggerEvent() && iSmartPhoneApi.GetPhoneNpcList() is var phoneNpcList && phoneNpcList != null && phoneNpcList.Count > 5)
-            {
-                double power = 1.4;
-                int maxValue = Math.Min(phoneNpcList.Count, 20);
-                if (maxValue < 0)
-                    return;
-
-                double rand = Game1.random.NextDouble();
-                int result = (int)(Math.Pow(rand, power) * maxValue);
-                string npcName = phoneNpcList[result];
-
-                if (Game1.timeOfDay == 1830 && Game1.random.NextDouble() < 0.2)
-                {
-                    Game1.activeClickableMenu = new ConfirmationDialog(
-                        $"{npcName} are inviting you for dinner",
-                        onConfirm: (Farmer who) =>
-                        {
-                            Game1.activeClickableMenu = null;
-                            TriggerDineOutEvent(npcName);
-
-                        },
-                        onCancel: (Farmer who) =>
-                        {
-                            Game1.activeClickableMenu = null;
-                        }
-                    );
-                }
-                else if (Game1.random.NextDouble() < 0.01 && !Game1.currentLocation.IsRainingHere() && !Game1.currentLocation.IsGreenRainingHere() && !Game1.currentLocation.IsLightningHere())
-                {
-                    int eventCase = Game1.random.Next(1, 3);
-                    switch (eventCase)
-                    {
-                        case 1:
-                            Game1.activeClickableMenu = new ConfirmationDialog(
-                                $"{npcName} are inviting you for a picnic",
-                                onConfirm: (Farmer who) =>
-                                {
-                                    Game1.activeClickableMenu = null;
-                                    TriggerPicnicEvent(npcName);
-
-                                },
-                                onCancel: (Farmer who) =>
-                                {
-                                    Game1.activeClickableMenu = null;
-                                }
-                            );
-                            break;
-                        case 2:
-                            Game1.activeClickableMenu = new ConfirmationDialog(
-                                $"{npcName} are inviting you for a campfire",
-                                onConfirm: (Farmer who) =>
-                                {
-                                    Game1.activeClickableMenu = null;
-                                    TriggerCampingEvent(npcName);
-
-                                },
-                                onCancel: (Farmer who) =>
-                                {
-                                    Game1.activeClickableMenu = null;
-                                }
-                            );
-                            break;
-                    }
-                }
-            }
         }
 
         private static async Task<(bool IsLatest, string? LatestVersion, string? LatestUrl)> CheckForModUpdate(IModInfo modInfo)
@@ -714,7 +783,7 @@ namespace UnlimitedEventExpansion
                     {
                         EventKey = "";
                         IsMaxedLimit = true;
-                        iSmartPhoneApi.SendSmartphoneNotification("=== Unlimited Event Expansion ===^^Failed to check AI usage for 3 times in a row, AI usage is temporarily disabled.^^Please check mod page for support. HaPyke!", "Unlimited Event Expansion");
+                        iSmartphoneApi.SendSmartphoneNotification("=== Unlimited Event Expansion ===^^Failed to check AI usage for 3 times in a row, AI usage is temporarily disabled.^^Please check mod page for support. HaPyke!", "Unlimited Event Expansion");
                         return;
                     }
                 }
@@ -724,7 +793,7 @@ namespace UnlimitedEventExpansion
                 {
                     EventKey = "";
                     IsMaxedLimit = true;
-                    iSmartPhoneApi.SendSmartphoneNotification("=== Unlimited Event Expansion ===^^Total AI usage reached its limit and is temporarily disabled.^^This will be reset the next day in timezone UTC+0. HaPyke!", "Unlimited Event Expansion");
+                    iSmartphoneApi.SendSmartphoneNotification("=== Unlimited Event Expansion ===^^Total AI usage reached its limit and is temporarily disabled.^^This will be reset the next day in timezone UTC+0. HaPyke!", "Unlimited Event Expansion");
                     return;
                 }
 

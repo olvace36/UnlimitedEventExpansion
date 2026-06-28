@@ -62,9 +62,12 @@ namespace UnlimitedEventExpansion
                     }
                     else
                     {
-                        sb.Append($"{conversation.Music}/7 8/farmer 5 6 1 {npcTarget} 9 6 3/fade");
-                        sb.Append($"{foodTile} /friendship {npcTarget} 10");
-                        sb.Append($"/pause 400/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.PlayerWarpper {event_map} 5 6 {npcTarget}\r\n");
+
+                        var (startPosCommand, moveCommand, proceedCommand) = RandomPathCommand(event_map, 9, 6, 3, npcTarget, Game1.player.Name);
+
+                        sb.Append($"{conversation.Music}/7 8/farmer 5 6 1 {npcTarget} {startPosCommand}/fade");
+                        sb.Append($"{foodTile} {moveCommand} {proceedCommand} /friendship {npcTarget} 10");
+                        sb.Append($"/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.PlayerWarpper {event_map} 5 6 {npcTarget}\r\n");
                     }
 
                     int lineNum = 1;
@@ -94,7 +97,7 @@ namespace UnlimitedEventExpansion
                         {
                             if (entry.Type == "D")
                             {
-                                sb.Append($"/pause 2000/beginSimultaneousCommand/speak {npcTarget} \"{entry.Dialogue}\"{portraitId}/endSimultaneousCommand");
+                                sb.Append($"/pause 1000/beginSimultaneousCommand/speak {npcTarget} \"{entry.Dialogue}\"{portraitId}/endSimultaneousCommand");
                                 lineNum++;
                             }
                             continue;
@@ -260,9 +263,46 @@ namespace UnlimitedEventExpansion
 
 
                 Shuffle(npc_tiles);
-                string guestTile = string.Join(" ", visitor.Zip(npc_tiles, (npc, tile) =>
-                    $"{npc.Name} {tile[0]} {tile[1]} {tile[2]}"
-                ));
+                var allNpcPositions = new StringBuilder();
+                var allNpcMoveCommands = new StringBuilder();
+                var allNpcProceedCommands = new StringBuilder();
+
+                for (int i = 0; i < visitor.Count; i++)
+                {
+                    string npcName = visitor[i].Name;
+                    int finalX = npc_tiles[i][0];
+                    int finalY = npc_tiles[i][1];
+                    int finalFacingDirection = npc_tiles[i][2];
+
+                    string hiTarget = "Farmer";
+                    if (visitor.Count > 1)
+                    {
+                        do
+                        {
+                            hiTarget = visitor[Game1.random.Next(visitor.Count)].Name;
+                        } while (hiTarget == npcName);
+                    }
+
+                    var (startPosCommand, moveCommand, proceedCommand) = RandomPathCommand(event_map, finalX, finalY, finalFacingDirection, npcName, hiTarget);
+
+                    // 1. Group all start positions
+                    if (allNpcPositions.Length > 0)
+                    {
+                        allNpcPositions.Append(" ");
+                    }
+                    allNpcPositions.Append($"{npcName} {startPosCommand}");
+
+                    // 2. Group all movement commands together
+                    allNpcMoveCommands.Append(moveCommand);
+
+                    // 3. Group all proceed commands together at the end
+                    allNpcProceedCommands.Append(proceedCommand);
+                }
+
+                // Build the final master strings
+                string finalAllNpcPositions = allNpcPositions.ToString();
+                string finalAllMoveCommands = allNpcMoveCommands.ToString();
+                string finalAllProceedCommands = allNpcProceedCommands.ToString();
 
 
                 Shuffle(visitor);
@@ -331,9 +371,9 @@ namespace UnlimitedEventExpansion
                     string addReward = randomItem != null ? $"/addItem {randomItem.QualifiedItemId}" : $"/addItem (O)220";
 
                     var sb = new StringBuilder();
-                    sb.Append($"{conversation.Music}/{host_tile[0]} {host_tile[1] + 2}/farmer {player_tile[0]} {player_tile[1]} {player_tile[2]} {npcTarget} {host_tile[0]} {host_tile[1]} {host_tile[2]} {guestTile}/fade");
-                    sb.Append($"{foodTile} {giftTile} {furnitureTile} {friendshipReward}");
-                    sb.Append($"/pause 400/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.PlayerWarpper {event_map} {player_tile[0]} {player_tile[1]} {npcTarget}\r\n");
+                    sb.Append($"{conversation.Music}/{host_tile[0]} {host_tile[1] + 2}/farmer {player_tile[0]} {player_tile[1]} {player_tile[2]} {npcTarget} {host_tile[0]} {host_tile[1]} {host_tile[2]} {finalAllNpcPositions}/fade/beginSimultaneousCommand{finalAllMoveCommands} {finalAllProceedCommands}/endSimultaneousCommand");
+                    sb.Append($"/pause 600 {foodTile} /pause 400 {giftTile} /pause 600 {furnitureTile} {friendshipReward}");
+                    sb.Append($"/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.PlayerWarpper {event_map} {player_tile[0]} {player_tile[1]} {npcTarget}\r\n");
                     int lineNum = 1;
                     foreach (var entry in conversation.Dialogue)
                     {
@@ -360,7 +400,7 @@ namespace UnlimitedEventExpansion
                         {
                             if (entry.Type == "D")
                             {
-                                sb.Append($"/pause 2000/beginSimultaneousCommand/speak {entry.Npc} \"{entry.Dialogue}\"{portraitId}/endSimultaneousCommand");
+                                sb.Append($"/pause 750/beginSimultaneousCommand/speak {entry.Npc} \"{entry.Dialogue}\"{portraitId}/endSimultaneousCommand");
                                 lineNum++;
                             }
                             continue;
@@ -506,10 +546,12 @@ namespace UnlimitedEventExpansion
                         return $"/addObject {tile[0]} {adjustedY} {furnitureId} 2";
                     }));
 
+                    var (startPosCommand, moveCommand, proceedCommand) = RandomPathCommand(event_map, npc_tile[0], npc_tile[1], npc_tile[2], npcTarget, Game1.player.Name);
+
                     var sb = new StringBuilder();
-                    sb.Append($"{conversation.Music}/{player_tile[0]} {player_tile[1]}/farmer {player_tile[0]} {player_tile[1]} {player_tile[2]} {npcTarget} {npc_tile[0]} {npc_tile[1]} {npc_tile[2]}/fade");
-                    sb.Append($"{giftTile} {furnitureTile} {foodTile} /friendship {npcTarget} 20");
-                    sb.Append($"/pause 400/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.PlayerWarpper {event_map} {player_tile[0]} {player_tile[1]} {npcTarget}\r\n");
+                    sb.Append($"{conversation.Music}/{player_tile[0]} {player_tile[1]}/farmer {player_tile[0]} {player_tile[1]} {player_tile[2]} {npcTarget} {startPosCommand}/fade{moveCommand}{proceedCommand}");
+                    sb.Append($"/pause 400 {giftTile} /pause 550 {furnitureTile} /pause 700 {foodTile} /friendship {npcTarget} 20");
+                    sb.Append($"/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.PlayerWarpper {event_map} {player_tile[0]} {player_tile[1]} {npcTarget}\r\n");
                     int lineNum = 1;
                     foreach (var entry in conversation.Dialogue)
                     {
@@ -536,7 +578,7 @@ namespace UnlimitedEventExpansion
                         {
                             if (entry.Type == "D")
                             {
-                                sb.Append($"/pause 2000/beginSimultaneousCommand/speak {npcTarget} \"{entry.Dialogue}\"{portraitId}/endSimultaneousCommand");
+                                sb.Append($"/pause 1000/beginSimultaneousCommand/speak {npcTarget} \"{entry.Dialogue}\"{portraitId}/endSimultaneousCommand");
                                 lineNum++;
                             }
                             continue;
@@ -689,9 +731,50 @@ namespace UnlimitedEventExpansion
             }
 
             Shuffle(npc_tiles);
-            string guestTile = string.Join(" ", guests.Zip(npc_tiles, (npc, tile) =>
-                $"{npc.Name} {tile[0]} {tile[1]} {tile[2]}"
-            ));
+
+            var allNpcPositions = new StringBuilder();
+            var allNpcMoveCommands = new StringBuilder();
+            var allNpcProceedCommands = new StringBuilder();
+
+            for (int i = 0; i < guests.Count; i++)
+            {
+                string npcName = guests[i].Name;
+                int finalX = npc_tiles[i][0];
+                int finalY = npc_tiles[i][1];
+                int finalFacingDirection = npc_tiles[i][2];
+
+                string hiTarget = "Farmer";
+                if (guests.Count > 1)
+                {
+                    do
+                    {
+                        hiTarget = guests[Game1.random.Next(guests.Count)].Name;
+                    } while (hiTarget == npcName);
+                }
+
+                var (startPosCommand, moveCommand, proceedCommand) = RandomPathCommand(event_map, finalX, finalY, finalFacingDirection, npcName, hiTarget);
+
+                // 1. Group all start positions
+                if (allNpcPositions.Length > 0)
+                {
+                    allNpcPositions.Append(" ");
+                }
+                allNpcPositions.Append($"{npcName} {startPosCommand}");
+
+                // 2. Group all movement commands together
+                allNpcMoveCommands.Append(moveCommand);
+
+                // 3. Group all proceed commands together at the end
+                allNpcProceedCommands.Append(proceedCommand);
+            }
+
+            // Build the final master strings
+            string finalAllNpcPositions = allNpcPositions.ToString();
+            string finalAllMoveCommands = allNpcMoveCommands.ToString();
+            string finalAllProceedCommands = allNpcProceedCommands.ToString();
+
+
+
             string allNpcName = string.Join(", ", guests.Select(npc => npc.Name));
 
             // reward
@@ -729,9 +812,9 @@ namespace UnlimitedEventExpansion
                     }));
 
                     var sb = new StringBuilder();
-                    sb.Append($"{conversation.Music}/{player_tile[0]} {player_tile[1]}/farmer {player_tile[0]} {player_tile[1]} {player_tile[2]} {guestTile}/fade"); // music, view, player-npc tiles
-                    sb.Append($"{setupCamp} {chairTiles} {logTiles} {furnitureTile}/friendship {npcTarget} 20");
-                    sb.Append($"/pause 400/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.campfireSkipWarpper {event_map} {player_tile[0]} {player_tile[1]} {campfire_tile[0]} {campfire_tile[1]} {npcTarget}\r\n");
+                    sb.Append($"{conversation.Music}/{player_tile[0]} {player_tile[1]}/farmer {player_tile[0]} {player_tile[1]} {player_tile[2]} {finalAllNpcPositions}/fade/beginSimultaneousCommand{finalAllMoveCommands} {finalAllProceedCommands}/endSimultaneousCommand"); // music, view, player-npc tiles
+                    sb.Append($"/pause 600 {setupCamp} /pause 500 {chairTiles} /pause 500 {logTiles} /pause 400 {furnitureTile}/friendship {npcTarget} 20");
+                    sb.Append($"/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.campfireSkipWarpper {event_map} {player_tile[0]} {player_tile[1]} {campfire_tile[0]} {campfire_tile[1]} {npcTarget}\r\n");
                     int lineNum = 1;
                     foreach (var entry in conversation.Dialogue)
                     {
@@ -758,7 +841,7 @@ namespace UnlimitedEventExpansion
                         {
                             if (entry.Type == "D")
                             {
-                                sb.Append($"/pause 2000/beginSimultaneousCommand/speak {entry.Npc} \"{entry.Dialogue}\"{portraitId}/endSimultaneousCommand");
+                                sb.Append($"/pause 1000/beginSimultaneousCommand/speak {entry.Npc} \"{entry.Dialogue}\"{portraitId}/endSimultaneousCommand");
                                 lineNum++;
                             }
                             continue;
@@ -896,10 +979,47 @@ namespace UnlimitedEventExpansion
 
 
                 Shuffle(npc_tiles);
-                string guestTile = string.Join(" ", visitor.Zip(npc_tiles, (npc, tile) =>
-                    $"{npc.Name} {tile[0]} {tile[1]} {tile[2]}"
-                ));
 
+                var allNpcPositions = new StringBuilder();
+                var allNpcMoveCommands = new StringBuilder();
+                var allNpcProceedCommands = new StringBuilder();
+
+                for (int i = 0; i < visitor.Count; i++)
+                {
+                    string npcName = visitor[i].Name;
+                    int finalX = npc_tiles[i][0];
+                    int finalY = npc_tiles[i][1];
+                    int finalFacingDirection = npc_tiles[i][2];
+
+                    string hiTarget = "Farmer";
+                    if (visitor.Count > 1)
+                    {
+                        do
+                        {
+                            hiTarget = visitor[Game1.random.Next(visitor.Count)].Name;
+                        } while (hiTarget == npcName);
+                    }
+
+                    var (startPosCommand, moveCommand, proceedCommand) = RandomPathCommand(event_map, finalX, finalY, finalFacingDirection, npcName, hiTarget);
+
+                    // 1. Group all start positions
+                    if (allNpcPositions.Length > 0)
+                    {
+                        allNpcPositions.Append(" ");
+                    }
+                    allNpcPositions.Append($"{npcName} {startPosCommand}");
+
+                    // 2. Group all movement commands together
+                    allNpcMoveCommands.Append(moveCommand);
+
+                    // 3. Group all proceed commands together at the end
+                    allNpcProceedCommands.Append(proceedCommand);
+                }
+
+                // Build the final master strings
+                string finalAllNpcPositions = allNpcPositions.ToString();
+                string finalAllMoveCommands = allNpcMoveCommands.ToString();
+                string finalAllProceedCommands = allNpcProceedCommands.ToString();
 
                 Shuffle(visitor);
                 string guestName = string.Join(", ", visitor.Select(v => v.Name));
@@ -965,9 +1085,9 @@ namespace UnlimitedEventExpansion
                     }));
 
                     var sb = new StringBuilder();
-                    sb.Append($"{conversation.Music}/{host_tile[0]} {host_tile[1] + 2}/farmer {host_tile[0]} {host_tile[1]} {host_tile[2]} {guestTile}/fade");
-                    sb.Append($"{foodTile} {giftTile} {furnitureTile} {friendshipReward}");
-                    sb.Append($"/pause 400/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.PlayerWarpper {event_map} {player_tile[0]} {player_tile[1]} null\r\n");
+                    sb.Append($"{conversation.Music}/{host_tile[0]} {host_tile[1] + 2}/farmer {host_tile[0]} {host_tile[1]} {host_tile[2]} {finalAllNpcPositions}/fade/beginSimultaneousCommand{finalAllMoveCommands} {finalAllProceedCommands}/endSimultaneousCommand");
+                    sb.Append($"/pause 600 {foodTile} /pause 400 {giftTile} /pause 700 {furnitureTile} {friendshipReward}");
+                    sb.Append($"/setSkipActions d5a1lamdtd.UnlimitedEventExpansion.PlayerWarpper {event_map} {player_tile[0]} {player_tile[1]} null\r\n");
                     int lineNum = 1;
                     foreach (var entry in conversation.Dialogue)
                     {
@@ -994,7 +1114,7 @@ namespace UnlimitedEventExpansion
                         {
                             if (entry.Type == "D")
                             {
-                                sb.Append($"/pause 2000/beginSimultaneousCommand/speak {entry.Npc} \"{entry.Dialogue}\"{portraitId}/endSimultaneousCommand");
+                                sb.Append($"/pause 1000/beginSimultaneousCommand/speak {entry.Npc} \"{entry.Dialogue}\"{portraitId}/endSimultaneousCommand");
                                 lineNum++;
                             }
                             continue;

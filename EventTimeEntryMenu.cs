@@ -1428,9 +1428,9 @@ namespace UnlimitedEventExpansion
                 : $"Scheduled {eventType} with {npcDisplayName} at {displayTime}{locationLabel}.";
 
             if (!string.IsNullOrWhiteSpace(npcResponseTemplate) && !string.IsNullOrWhiteSpace(eventNpcName))
-                iSmartPhoneApi.SendSmartphoneMessageFromNPC(eventNpcName, npcResponseTemplate);
+                iAppMessengerApi.SendSmartphoneMessageFromNPC(eventNpcName, npcResponseTemplate);
 
-            iSmartPhoneApi.SendSmartphoneNotification(feedback, "Unlimited Events Expansion");
+            iSmartphoneApi.SendSmartphoneNotification(feedback, "Unlimited Events Expansion");
         }
 
         public static void TryOpenScheduleEventTimeMenu(
@@ -1447,14 +1447,14 @@ namespace UnlimitedEventExpansion
             if ((Game1.isRaining || Game1.isGreenRain || Game1.isLightning) && (eventType == "Campfire" || eventType == "Picnic"))
             {
                 Game1.playSound("cancel");
-                iSmartPhoneApi.SendSmartphoneNotification("Cannot schedule outdoor events in this weather.", "Unlimited Events Expansion");
+                iSmartphoneApi.SendSmartphoneNotification("Cannot schedule outdoor events in this weather.", "Unlimited Events Expansion");
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(Config.Key) && TotalEventRegisteredToday >= ModEntry.DailyEventLimit)
             {
                 Game1.playSound("cancel");
-                iSmartPhoneApi.SendSmartphoneNotification($"You can only schedule {ModEntry.DailyEventLimit} events per day without your own API key. Check out the mod page for more instructions!", "Unlimited Events Expansion");
+                iSmartphoneApi.SendSmartphoneNotification($"You can only schedule {ModEntry.DailyEventLimit} events per day without your own API key. Check out the mod page for more instructions!", "Unlimited Events Expansion");
                 return;
             }
 
