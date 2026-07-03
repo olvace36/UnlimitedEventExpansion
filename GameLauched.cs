@@ -292,9 +292,8 @@ namespace UnlimitedEventExpansion
                             try
                             {
                                 SMonitor.Log($"UnlimitedEventExpansion: Newer version available", LogLevel.Warn);
-                                Game1.drawLetterMessage("=== UnlimitedEventExpansion ===^^Newer version is available. Your current version may be outdated and no longer working.^^");
 
-                                iSmartphoneApi.SendSmartphoneNotification("=== UnlimitedEventExpansion ===^^Newer version is available. Your current version may be outdated and no longer working.^^", "UnlimitedEventExpansion");
+                                iSmartphoneApi.SendSmartphoneNotification("=== UnlimitedEventExpansion ===^^Newer version is available. Your current version may be outdated and no longer working.", "UnlimitedEventExpansion");
                             }
                             catch (Exception ex)
                             {
@@ -454,7 +453,7 @@ namespace UnlimitedEventExpansion
             PendingUnlimitedEvents.Clear();
             TotalEventRegisteredToday = 0;
 
-            //CheckTodayPlayerBirthday();
+            CheckTodayPlayerBirthday();
         }
         public static string ConvertPathToAdvancedMove(Point startPoint, Stack<Point> path)
         {

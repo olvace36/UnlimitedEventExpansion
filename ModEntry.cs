@@ -354,32 +354,31 @@ namespace UnlimitedEventExpansion
             return filteredItems[index];
         }
 
-        //public static void CheckTodayPlayerBirthday()
-        //{
-        //    string playerBirthDate = iAppMessengerApi.GetPlayerBirthDate();
-        //    string playerBirthSeason = iAppMessengerApi.GetPlayerBirthSeason();
-        //    if (string.IsNullOrWhiteSpace(playerBirthDate) || string.IsNullOrWhiteSpace(playerBirthSeason))
-        //    {
-        //        return;
-        //    }
+        public static void CheckTodayPlayerBirthday()
+        {
+            Game1.player.modData.TryGetValue("d5a1lamdtd.Smartphone-AppMessenger.BirthDate", out string playerBirthDate);
+            Game1.player.modData.TryGetValue("d5a1lamdtd.Smartphone-AppMessenger.BirthSeason", out string playerBirthSeason);
+            if (string.IsNullOrWhiteSpace(playerBirthDate) || string.IsNullOrWhiteSpace(playerBirthSeason))
+            {
+                return;
+            }
 
-
-        //    if (playerBirthDate == Game1.dayOfMonth.ToString() && string.Equals(playerBirthSeason, Game1.currentSeason, StringComparison.OrdinalIgnoreCase))
-        //    {
-        //        Game1.activeClickableMenu = new ConfirmationDialog(
-        //            $"It is your birthday today. Want to celebrate it?",
-        //            onConfirm: (Farmer who) =>
-        //            {
-        //                Game1.activeClickableMenu = null;
-        //                TryOpenSchedulePlayerBirthdayMenu();
-        //            },
-        //            onCancel: (Farmer who) =>
-        //            {
-        //                Game1.activeClickableMenu = null;
-        //            }
-        //        );
-        //    }
-        //}
+            if (playerBirthDate == Game1.dayOfMonth.ToString() && string.Equals(playerBirthSeason, Game1.currentSeason, StringComparison.OrdinalIgnoreCase))
+            {
+                Game1.activeClickableMenu = new ConfirmationDialog(
+                    $"It is your birthday today. Want to celebrate it?",
+                    onConfirm: (Farmer who) =>
+                    {
+                        Game1.activeClickableMenu = null;
+                        TryOpenSchedulePlayerBirthdayMenu();
+                    },
+                    onCancel: (Farmer who) =>
+                    {
+                        Game1.activeClickableMenu = null;
+                    }
+                );
+            }
+        }
     }
 
 
