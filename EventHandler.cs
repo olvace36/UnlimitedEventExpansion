@@ -215,8 +215,7 @@ namespace UnlimitedEventExpansion
                 List<string> requiredNpcNames = required_npc.ToList();
 
                 var eligibleNPCs = allVillagers
-                    .Where(npc => !socialNpcBlacklist.Contains(npc.Name)
-                        && !npc.IsInvisible
+                    .Where(npc => !npc.IsInvisible
                         && npc.CanSocialize
                         && Game1.player.friendshipData.ContainsKey(npc.Name)
                         && (int)Game1.player.friendshipData[npc.Name].Points / 250 > 1
@@ -704,7 +703,6 @@ namespace UnlimitedEventExpansion
             {
                 var eligibleNPCs = allVillagers
                     .Where(candidate =>
-                        !socialNpcBlacklist.Contains(candidate.Name) &&
                         !candidate.IsInvisible &&
                         candidate.CanSocialize &&
                         Game1.player.friendshipData.TryGetValue(candidate.Name, out var friendshipData) &&
@@ -932,8 +930,7 @@ namespace UnlimitedEventExpansion
                 List<string> requiredNpcNames = required_npc.ToList();
 
                 var eligibleNPCs = allVillagers
-                    .Where(npc => !socialNpcBlacklist.Contains(npc.Name)
-                        && !npc.IsInvisible
+                    .Where(npc => !npc.IsInvisible
                         && npc.CanSocialize
                         && Game1.player.friendshipData.ContainsKey(npc.Name)
                         && (int)Game1.player.friendshipData[npc.Name].Points / 250 > 1

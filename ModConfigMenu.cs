@@ -1,5 +1,7 @@
 using ContentPatcher;
 using StardewModdingAPI;
+using System.IO;
+using System.Linq;
 
 namespace UnlimitedEventExpansion
 {
@@ -23,26 +25,43 @@ namespace UnlimitedEventExpansion
 
             configMenu.AddSectionTitle(
                             mod: modManifest,
-                            text: () => "Language"
+                            text: () => GetTranslation("config.section.language")
                         );
 
             configMenu.AddTextOption(
                 mod: modManifest,
                 getValue: () => string.IsNullOrWhiteSpace(Config.Language) ? ModConfig.LanguageEnglish : Config.Language,
                 setValue: value => Config.Language = string.IsNullOrWhiteSpace(value) ? ModConfig.LanguageEnglish : value.Trim(),
-                name: () => "Language",
-                tooltip: () => "Language used for generated dialogue. Use English for default behavior."
+                name: () => GetTranslation("config.language.name"),
+                tooltip: () => GetTranslation("config.language.tooltip")
             );
 
+            string npcProfilePath = Path.Combine(helper.DirectoryPath, "npc_profile");
+            string[] themeOptions = Directory.Exists(npcProfilePath)
+                ? Directory.GetDirectories(npcProfilePath).Select(Path.GetFileName).Where(name => !string.IsNullOrEmpty(name)).ToArray()!
+                : new[] { "vanilla" };
+            if (themeOptions.Length == 0)
+            {
+                themeOptions = new[] { "vanilla" };
+            }
+
+            configMenu.AddTextOption(
+                mod: modManifest,
+                name: () => GetTranslation("config.theme.name"),
+                tooltip: () => GetTranslation("config.theme.tooltip"),
+                getValue: () => string.IsNullOrWhiteSpace(Config.NpcProfileTheme) ? "vanilla" : Config.NpcProfileTheme,
+                setValue: value => Config.NpcProfileTheme = string.IsNullOrWhiteSpace(value) ? "vanilla" : value.Trim(),
+                allowedValues: themeOptions
+            );
 
             configMenu.AddSectionTitle(
                 mod: modManifest,
-                text: () => "AI configuration"
+                text: () => GetTranslation("config.section.ai-config")
             );
 
             configMenu.AddParagraph(
                 mod: modManifest,
-                text: () => "All options below require your own API key to be effective. You still can use the mod but will have a limited usage. Return to title screen to see the options."
+                text: () => GetTranslation("config.ai-config.desc")
             );
 
             configMenu.SetTitleScreenOnlyForNextOptions(mod: modManifest, titleScreenOnly: true);
@@ -51,14 +70,14 @@ namespace UnlimitedEventExpansion
                 mod: modManifest,
                 getValue: () => Config?.Key ?? "",
                 setValue: value => Config.Key = value?.Trim() ?? "",
-                name: () => "Key",
-                tooltip: () => "OpenAI or Gemini key. See mod page for instructions how to get one.\nOpenAI keys: https://platform.openai.com/account/api-keys\nGemini keys: https://aistudio.google.com/apikey"
+                name: () => GetTranslation("config.key.name"),
+                tooltip: () => GetTranslation("config.key.tooltip")
             );
 
             configMenu.AddTextOption(
                 mod: modManifest,
-                name: () => "Model",
-                tooltip: () => "Choose which model to use.\nOf course if you using OpenAI key, choose one of the OpenAI models; and vice versa for Gemini key.",
+                name: () => GetTranslation("config.model.name"),
+                tooltip: () => GetTranslation("config.model.tooltip"),
                 getValue: () => Config.Model,
                 setValue: value => Config.Model = value,
                 allowedValues: ModConfig.AllSupportedModels,
@@ -67,21 +86,21 @@ namespace UnlimitedEventExpansion
 
             configMenu.AddParagraph(
                 mod: modManifest,
-                text: () => "These options control event quality and pacing."
+                text: () => GetTranslation("config.section.pacing")
             );
 
             configMenu.AddBoolOption(
                 mod: modManifest,
-                name: () => "Ignore heart-level requirements",
-                tooltip: () => "If enabled, you have access to events without the usual heart-level limits.\nRestart the game after changing this option.",
+                name: () => GetTranslation("config.allow-early-event.name"),
+                tooltip: () => GetTranslation("config.allow-early-event.tooltip"),
                 getValue: () => Config.AllowEarlyEvent,
                 setValue: value => Config.AllowEarlyEvent = value
             );
 
             configMenu.AddTextOption(
                 mod: modManifest,
-                name: () => "Event length",
-                tooltip: () => "Length of the event dialogue.",
+                name: () => GetTranslation("config.event-length.name"),
+                tooltip: () => GetTranslation("config.event-length.tooltip"),
                 getValue: () => Config.EventLength,
                 setValue: value => Config.EventLength = value,
                 allowedValues: new string[]
@@ -96,8 +115,8 @@ namespace UnlimitedEventExpansion
 
             configMenu.AddTextOption(
                 mod: modManifest,
-                name: () => "NPC detail level",
-                tooltip: () => "Higher detail gives richer NPC personality at higher token cost.\nCompared to Standard: Minimal uses about 100 fewer tokens, Detailed uses about 100 extra tokens per NPC.",
+                name: () => GetTranslation("config.characteristic-mode.name"),
+                tooltip: () => GetTranslation("config.characteristic-mode.tooltip"),
                 getValue: () => Config.CharacteristicMode,
                 setValue: value => Config.CharacteristicMode = value,
                 allowedValues: new string[]
@@ -114,14 +133,14 @@ namespace UnlimitedEventExpansion
         {
             return value switch
             {
-                ModConfig.ModelGpt51 => "GPT-5.1 (best quality, higher cost)",
-                ModConfig.ModelGpt5Mini => "GPT-5 Mini (balanced)",
-                ModConfig.ModelGpt5Nano => "GPT-5 Nano (lowest cost)",
-                ModConfig.ModelGpt54Mini => "GPT-5.4 Mini (balanced, newer)",
-                ModConfig.ModelGpt54Nano => "GPT-5.4 Nano (low cost, newer)",
-                ModConfig.ModelGemini35Flash => "Gemini 3.5 Flash",
-                ModConfig.ModelGemini31FlashLite => "Gemini 3.1 Flash Lite",
-                ModConfig.ModelGemini3FlashPreview => "Gemini 3 Flash Preview",
+                ModConfig.ModelGpt51 => GetTranslation("config.model.gpt51"),
+                ModConfig.ModelGpt5Mini => GetTranslation("config.model.gpt5mini"),
+                ModConfig.ModelGpt5Nano => GetTranslation("config.model.gpt5nano"),
+                ModConfig.ModelGpt54Mini => GetTranslation("config.model.gpt54mini"),
+                ModConfig.ModelGpt54Nano => GetTranslation("config.model.gpt54nano"),
+                ModConfig.ModelGemini35Flash => GetTranslation("config.model.gemini35flash"),
+                ModConfig.ModelGemini31FlashLite => GetTranslation("config.model.gemini31flashlite"),
+                ModConfig.ModelGemini3FlashPreview => GetTranslation("config.model.gemini3flashpreview"),
                 _ => value
             };
         }
@@ -130,10 +149,10 @@ namespace UnlimitedEventExpansion
         {
             return value switch
             {
-                ModConfig.EventLengthShort => "Short (up to 10 lines)",
-                ModConfig.EventLengthMedium => "Medium (up to 12 lines)",
-                ModConfig.EventLengthLong => "Long (up to 15 lines)",
-                ModConfig.EventLengthExtraLong => "Extra long (up to 20 lines)",
+                ModConfig.EventLengthShort => GetTranslation("config.event-length.short"),
+                ModConfig.EventLengthMedium => GetTranslation("config.event-length.medium"),
+                ModConfig.EventLengthLong => GetTranslation("config.event-length.long"),
+                ModConfig.EventLengthExtraLong => GetTranslation("config.event-length.extra-long"),
                 _ => value
             };
         }
@@ -142,9 +161,9 @@ namespace UnlimitedEventExpansion
         {
             return value switch
             {
-                ModConfig.CharacteristicModeMinimal => "Minimal (lower token use)",
-                ModConfig.CharacteristicModeShort => "Standard (recommended)",
-                ModConfig.CharacteristicModeLong => "Detailed (higher token use)",
+                ModConfig.CharacteristicModeMinimal => GetTranslation("config.characteristic-mode.minimal"),
+                ModConfig.CharacteristicModeShort => GetTranslation("config.characteristic-mode.short"),
+                ModConfig.CharacteristicModeLong => GetTranslation("config.characteristic-mode.long"),
                 _ => value
             };
         }

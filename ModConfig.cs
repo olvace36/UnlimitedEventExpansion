@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -74,6 +74,7 @@ namespace UnlimitedEventExpansion
         public string EventLength { get; set; } = EventLengthShort;
         public string CharacteristicMode { get; set; } = CharacteristicModeShort;
         public string Language { get; set; } = LanguageEnglish;
+        public string NpcProfileTheme { get; set; } = "vanilla";
 
     }
 }

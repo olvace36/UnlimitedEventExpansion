@@ -1,4 +1,4 @@
-﻿
+
 using System;
 using System.Diagnostics.Metrics;
 using System.Reflection;
@@ -212,22 +212,6 @@ namespace UnlimitedEventExpansion
             "(F)TallHousePlant"
         };
 
-        public static List<string> socialNpcBlacklist = new List<string>
-        {
-            "Leo",
-            "Krobus",
-            "Dwarf",
-            "Gunther",
-            "Birdie",
-            "Bouncer",
-            "MoonSBV",
-            "PanSBV",
-            "RaccoonSBV",
-            "Leximonster",
-            "Dianna",
-            "Torts"
-        };
-
         public static Dictionary<string, PicnicMapData> picnicMap;
 
 
@@ -366,7 +350,7 @@ namespace UnlimitedEventExpansion
             if (playerBirthDate == Game1.dayOfMonth.ToString() && string.Equals(playerBirthSeason, Game1.currentSeason, StringComparison.OrdinalIgnoreCase))
             {
                 Game1.activeClickableMenu = new ConfirmationDialog(
-                    $"It is your birthday today. Want to celebrate it?",
+                    GetTranslation("birthday.dialog.title"),
                     onConfirm: (Farmer who) =>
                     {
                         Game1.activeClickableMenu = null;
@@ -379,8 +363,10 @@ namespace UnlimitedEventExpansion
                 );
             }
         }
+
+        public static string GetTranslation(string key, object? tokens = null)
+        {
+            return Instance.Helper.Translation.Get(key, tokens).ToString();
+        }
     }
-
-
-
 }

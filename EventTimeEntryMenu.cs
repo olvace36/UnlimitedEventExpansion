@@ -14,8 +14,8 @@ namespace UnlimitedEventExpansion
 {
     public partial class ModEntry
     {
-        private const string TooLateToScheduleMessage = "Too late to schedule this event today.";
-        private const string TimeSlotUnavailableMessage = "Cannot schedule at this time";
+        private static string TooLateToScheduleMessage => GetTranslation("event-time-menu.too-late");
+        private static string TimeSlotUnavailableMessage => GetTranslation("event-time-menu.slot-unavailable");
 
         private sealed class EventTimeEntryMenu : IClickableMenu
         {
@@ -53,7 +53,7 @@ namespace UnlimitedEventExpansion
                 this.onCancel = onCancel ?? (() => { });
                 this.npcDisplayName = string.IsNullOrWhiteSpace(npcDisplayName) ? "NPC" : npcDisplayName;
                 this.eventDisplayName = string.IsNullOrWhiteSpace(eventDisplayName) ? "event" : eventDisplayName;
-                this.primaryActionLabel = string.IsNullOrWhiteSpace(primaryActionLabel) ? "Confirm" : primaryActionLabel;
+                this.primaryActionLabel = string.IsNullOrWhiteSpace(primaryActionLabel) ? GetTranslation("event-time-menu.confirm") : primaryActionLabel;
 
                 textBoxBounds = new Rectangle(xPositionOnScreen + 170, yPositionOnScreen + 198, 220, 56);
                 minusButtonBounds = new Rectangle(xPositionOnScreen + 106, yPositionOnScreen + 202, 52, 52);
@@ -213,7 +213,7 @@ namespace UnlimitedEventExpansion
                 {
                     Utility.drawTextWithShadow(
                         b,
-                        $"Selected: {FormatEventTimeForDisplay(normalizedPreviewTime)}",
+                        GetTranslation("event-time-menu.selected-time", new { time = FormatEventTimeForDisplay(normalizedPreviewTime) }),
                         Game1.smallFont,
                         new Vector2(xPositionOnScreen + 58, yPositionOnScreen + 278),
                         Game1.textColor);
@@ -235,7 +235,7 @@ namespace UnlimitedEventExpansion
                     {
                         Utility.drawTextWithShadow(
                         b,
-                        "Selected: Invalid time",
+                        GetTranslation("event-time-menu.invalid-time"),
                         Game1.smallFont,
                         new Vector2(xPositionOnScreen + 58, yPositionOnScreen + 278),
                         Color.IndianRed);
@@ -253,7 +253,7 @@ namespace UnlimitedEventExpansion
                 }
 
                 DrawButton(b, primaryActionButtonBounds, primaryActionLabel, new Color(196, 236, 196));
-                DrawButton(b, cancelButtonBounds, "Cancel", new Color(242, 218, 218));
+                DrawButton(b, cancelButtonBounds, GetTranslation("event-time-menu.cancel"), new Color(242, 218, 218));
 
                 if (!string.IsNullOrWhiteSpace(validationMessage))
                 {
@@ -656,7 +656,7 @@ namespace UnlimitedEventExpansion
 
                 Utility.drawTextWithShadow(
                     b,
-                    "Select one location.",
+                    GetTranslation("event-location-menu.title"),
                     Game1.smallFont,
                     new Vector2(xPositionOnScreen + 58, yPositionOnScreen + 132),
                     Game1.textColor);
@@ -709,9 +709,9 @@ namespace UnlimitedEventExpansion
                     DrawSimpleButton(b, downButtonBounds, "v", new Color(232, 232, 232));
                 }
 
-                DrawSimpleButton(b, cancelButtonBounds, "Cancel", new Color(242, 218, 218));
-                DrawSimpleButton(b, backButtonBounds, "Back", new Color(225, 225, 225));
-                DrawSimpleButton(b, nextButtonBounds, "Next", new Color(196, 236, 196));
+                DrawSimpleButton(b, cancelButtonBounds, GetTranslation("event-time-menu.cancel"), new Color(242, 218, 218));
+                DrawSimpleButton(b, backButtonBounds, GetTranslation("event-time-menu.back"), new Color(225, 225, 225));
+                DrawSimpleButton(b, nextButtonBounds, GetTranslation("event-time-menu.next"), new Color(196, 236, 196));
 
                 if (!string.IsNullOrWhiteSpace(validationMessage))
                 {
@@ -748,7 +748,7 @@ namespace UnlimitedEventExpansion
             {
                 if (selectedIndex < 0 || selectedIndex >= options.Count)
                 {
-                    validationMessage = "Select a location before continuing.";
+                    validationMessage = GetTranslation("event-location-menu.select-error");
                     Game1.playSound("cancel");
                     return;
                 }
@@ -906,8 +906,8 @@ namespace UnlimitedEventExpansion
                 Game1.drawDialogueBox(xPositionOnScreen, yPositionOnScreen, width, height, false, true);
 
                 string title = string.IsNullOrWhiteSpace(npcDisplayName)
-                    ? $"Pick guests for {eventDisplayName}"
-                    : $"Pick attendees for {eventDisplayName}";
+                    ? GetTranslation("event-npc-menu.pick-guests", new { eventDisplayName = eventDisplayName })
+                    : GetTranslation("event-npc-menu.pick-attendees", new { eventDisplayName = eventDisplayName });
                 Vector2 titleSize = Game1.dialogueFont.MeasureString(title);
                 Utility.drawTextWithShadow(
                     b,
@@ -919,7 +919,7 @@ namespace UnlimitedEventExpansion
                 int optionalSelected = selectedNames.Count(name => !lockedNames.Contains(name));
                 Utility.drawTextWithShadow(
                     b,
-                    $"Locked: main/required NPCs. Optional selected: {optionalSelected}/{optionalLimit}",
+                    GetTranslation("event-npc-menu.selection-summary", new { optionalSelected = optionalSelected, optionalLimit = optionalLimit }),
                     Game1.smallFont,
                     new Vector2(xPositionOnScreen + 58, yPositionOnScreen + 132),
                     Game1.textColor);
@@ -960,7 +960,7 @@ namespace UnlimitedEventExpansion
                         false);
 
                     string checkbox = isSelected ? "[X]" : "[ ]";
-                    string lockSuffix = isLocked ? " (locked)" : string.Empty;
+                    string lockSuffix = isLocked ? GetTranslation("event-npc-menu.locked-suffix") : string.Empty;
                     Utility.drawTextWithShadow(
                         b,
                         $"{checkbox} {name}{lockSuffix}",
@@ -975,9 +975,9 @@ namespace UnlimitedEventExpansion
                     DrawSimpleButton(b, downButtonBounds, "v", new Color(232, 232, 232));
                 }
 
-                DrawSimpleButton(b, cancelButtonBounds, "Cancel", new Color(242, 218, 218));
-                DrawSimpleButton(b, backButtonBounds, "Back", new Color(225, 225, 225));
-                DrawSimpleButton(b, confirmButtonBounds, "Confirm", new Color(196, 236, 196));
+                DrawSimpleButton(b, cancelButtonBounds, GetTranslation("event-time-menu.cancel"), new Color(242, 218, 218));
+                DrawSimpleButton(b, backButtonBounds, GetTranslation("event-time-menu.back"), new Color(225, 225, 225));
+                DrawSimpleButton(b, confirmButtonBounds, GetTranslation("event-time-menu.confirm"), new Color(196, 236, 196));
 
                 if (!string.IsNullOrWhiteSpace(validationMessage))
                 {
@@ -1006,7 +1006,7 @@ namespace UnlimitedEventExpansion
                 if (lockedNames.Contains(name))
                 {
                     Game1.playSound("cancel");
-                    validationMessage = $"{name} is required and cannot be removed.";
+                    validationMessage = GetTranslation("event-npc-menu.required-error", new { name = name });
                     return;
                 }
 
@@ -1022,8 +1022,8 @@ namespace UnlimitedEventExpansion
                 if (optionalSelected >= optionalLimit)
                 {
                     validationMessage = optionalLimit == 0
-                        ? "This location has no open attendee slots."
-                        : $"You can add up to {optionalLimit} optional NPC(s).";
+                        ? GetTranslation("event-npc-menu.no-slots")
+                        : GetTranslation("event-npc-menu.slots-limit", new { optionalLimit = optionalLimit });
                     Game1.playSound("cancel");
                     return;
                 }
@@ -1037,7 +1037,7 @@ namespace UnlimitedEventExpansion
                 List<string> result = allNames.Where(name => selectedNames.Contains(name)).ToList();
                 if (lockedNames.Any(lockedName => !selectedNames.Contains(lockedName)))
                 {
-                    validationMessage = "Main and required NPCs must remain selected.";
+                    validationMessage = GetTranslation("event-npc-menu.main-npcs-required");
                     Game1.playSound("cancel");
                     return;
                 }
@@ -1112,7 +1112,7 @@ namespace UnlimitedEventExpansion
                     Game1.activeClickableMenu = null;
                 },
                 initialTimeText: prefilledTime,
-                primaryActionLabel: needsExtraSelection ? "Next" : "Confirm");
+                primaryActionLabel: needsExtraSelection ? GetTranslation("event-time-menu.next") : GetTranslation("event-time-menu.confirm"));
         }
 
         private static void OpenLocationSelectionMenu(
@@ -1127,7 +1127,7 @@ namespace UnlimitedEventExpansion
             if (!TryGetEventLocationOptions(eventType, eventNpcName, out List<EventLocationOption> locationOptions))
             {
                 Game1.playSound("cancel");
-                Game1.addHUDMessage(new HUDMessage("No valid location is available for this event.", 3));
+                Game1.addHUDMessage(new HUDMessage(GetTranslation("hud.no-valid-location"), 3));
                 Game1.activeClickableMenu = null;
                 return;
             }
@@ -1384,7 +1384,6 @@ namespace UnlimitedEventExpansion
         {
             return Utility.getAllVillagers()
                 .Where(npc => npc != null
-                    && !socialNpcBlacklist.Contains(npc.Name)
                     && !npc.IsInvisible
                     && npc.CanSocialize
                     && Game1.player.friendshipData.TryGetValue(npc.Name, out Friendship? friendship)
@@ -1424,13 +1423,13 @@ namespace UnlimitedEventExpansion
                 ? string.Empty
                 : $" at {(Game1.getLocationFromName(selectedLocation)?.DisplayName ?? selectedLocation)}";
             string feedback = string.IsNullOrWhiteSpace(eventNpcName)
-                ? $"Scheduled {eventType} at {displayTime}{locationLabel}."
-                : $"Scheduled {eventType} with {npcDisplayName} at {displayTime}{locationLabel}.";
+                ? GetTranslation("notification.scheduled-no-npc", new { eventType = eventType, displayTime = displayTime, locationLabel = locationLabel })
+                : GetTranslation("notification.scheduled-with-npc", new { eventType = eventType, npcDisplayName = npcDisplayName, displayTime = displayTime, locationLabel = locationLabel });
 
             if (!string.IsNullOrWhiteSpace(npcResponseTemplate) && !string.IsNullOrWhiteSpace(eventNpcName))
                 iAppMessengerApi.SendSmartphoneMessageFromNPC(eventNpcName, npcResponseTemplate);
 
-            iSmartphoneApi.SendSmartphoneNotification(feedback, "Unlimited Events Expansion");
+            iSmartphoneApi.SendSmartphoneNotification(feedback, GetTranslation("app.name"));
         }
 
         public static void TryOpenScheduleEventTimeMenu(
@@ -1440,21 +1439,21 @@ namespace UnlimitedEventExpansion
         {
             if (Game1.getCharacterFromName(eventNpcName) is not NPC eventNpc)
             {
-                Game1.addHUDMessage(new HUDMessage("NPC not found: " + eventNpcName, 3));
+                Game1.addHUDMessage(new HUDMessage(GetTranslation("hud.npc-not-found", new { npcName = eventNpcName }), 3));
                 return;
             }
 
             if ((Game1.isRaining || Game1.isGreenRain || Game1.isLightning) && (eventType == "Campfire" || eventType == "Picnic"))
             {
                 Game1.playSound("cancel");
-                iSmartphoneApi.SendSmartphoneNotification("Cannot schedule outdoor events in this weather.", "Unlimited Events Expansion");
+                iSmartphoneApi.SendSmartphoneNotification(GetTranslation("notification.bad-weather"), GetTranslation("app.name"));
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(Config.Key) && TotalEventRegisteredToday >= ModEntry.DailyEventLimit)
             {
                 Game1.playSound("cancel");
-                iSmartphoneApi.SendSmartphoneNotification($"You can only schedule {ModEntry.DailyEventLimit} events per day without your own API key. Check out the mod page for more instructions!", "Unlimited Events Expansion");
+                iSmartphoneApi.SendSmartphoneNotification(GetTranslation("notification.daily-limit", new { limit = ModEntry.DailyEventLimit }), GetTranslation("app.name"));
                 return;
             }
 

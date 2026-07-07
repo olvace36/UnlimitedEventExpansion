@@ -1,4 +1,4 @@
-﻿using StardewModdingAPI;
+using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 using System.Text;
@@ -293,7 +293,7 @@ namespace UnlimitedEventExpansion
                             {
                                 SMonitor.Log($"UnlimitedEventExpansion: Newer version available", LogLevel.Warn);
 
-                                iSmartphoneApi.SendSmartphoneNotification("=== UnlimitedEventExpansion ===^^Newer version is available. Your current version may be outdated and no longer working.", "UnlimitedEventExpansion");
+                                iSmartphoneApi.SendSmartphoneNotification(GetTranslation("notification.new-version"), GetTranslation("app.name"));
                             }
                             catch (Exception ex)
                             {
@@ -304,9 +304,15 @@ namespace UnlimitedEventExpansion
                 });
             }
 
-            string npc_characteristic = Helper.ModContent.GetInternalAssetName("assets/npc_characteristics_short.json").BaseName;
-            string npc_characteristic_minimal = Helper.ModContent.GetInternalAssetName("assets/npc_characteristics_minimal.json").BaseName;
-            string npc_characteristic_long = Helper.ModContent.GetInternalAssetName("assets/npc_characteristics_long.json").BaseName;
+            string theme = Config.NpcProfileTheme;
+            if (string.IsNullOrWhiteSpace(theme) || !System.IO.Directory.Exists(System.IO.Path.Combine(this.Helper.DirectoryPath, "npc_profile", theme)))
+            {
+                theme = "vanilla";
+            }
+
+            string npc_characteristic = Helper.ModContent.GetInternalAssetName($"npc_profile/{theme}/npc_characteristics_short.json").BaseName;
+            string npc_characteristic_minimal = Helper.ModContent.GetInternalAssetName($"npc_profile/{theme}/npc_characteristics_minimal.json").BaseName;
+            string npc_characteristic_long = Helper.ModContent.GetInternalAssetName($"npc_profile/{theme}/npc_characteristics_long.json").BaseName;
 
             NpcCharacteristicsShort = Helper.ModContent.Load<Dictionary<string, string>>(npc_characteristic);
             NpcCharacteristicsMinimal = Helper.ModContent.Load<Dictionary<string, string>>(npc_characteristic_minimal);
@@ -782,7 +788,7 @@ namespace UnlimitedEventExpansion
                     {
                         EventKey = "";
                         IsMaxedLimit = true;
-                        iSmartphoneApi.SendSmartphoneNotification("=== Unlimited Event Expansion ===^^Failed to check AI usage for 3 times in a row, AI usage is temporarily disabled.^^Please check mod page for support. HaPyke!", "Unlimited Event Expansion");
+                        iSmartphoneApi.SendSmartphoneNotification(GetTranslation("notification.check-usage-failed"), GetTranslation("app.name"));
                         return;
                     }
                 }
@@ -792,7 +798,7 @@ namespace UnlimitedEventExpansion
                 {
                     EventKey = "";
                     IsMaxedLimit = true;
-                    iSmartphoneApi.SendSmartphoneNotification("=== Unlimited Event Expansion ===^^Total AI usage reached its limit and is temporarily disabled.^^This will be reset the next day in timezone UTC+0. HaPyke!", "Unlimited Event Expansion");
+                    iSmartphoneApi.SendSmartphoneNotification(GetTranslation("notification.usage-limit-reached"), GetTranslation("app.name"));
                     return;
                 }
 

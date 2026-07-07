@@ -17,6 +17,9 @@
 		<None Update="manifest.json">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
+		<None Update="npc_profile\**">
+		<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
 	</ItemGroup>
 
 	<Target Name="GenerateEmbeddedAiSecrets" BeforeTargets="CoreCompile">
